@@ -2,7 +2,7 @@
 # pylint: disable=no-value-for-parameter,import-outside-toplevel,import-error
 from typing import List, NamedTuple, Optional
 
-from kfp.dsl import Artifact, Input, Model, Output, component, importer
+from kfp.dsl import Artifact, Input, Output, component
 
 from utils.consts import PYTHON_IMAGE
 
