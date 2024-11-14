@@ -118,12 +118,11 @@ def pipeline_wrapper(mock: List[Literal[MOCKED_STAGES]]):
         base_model: str = BASE_MODEL,
         # minimal subset of MMLU_TASKS
         # mmlu_tasks_list: str = MMLU_TASKS_LIST,
-        model_dtype: str = MODEL_DTYPE,
+        # model_dtype: str = MODEL_DTYPE,
         few_shots: int = FEW_SHOTS,
         batch_size: str = BATCH_SIZE,
         max_workers: str = MAX_WORKERS,
         merge_system_user_message: bool = MERGE_SYSTEM_USER_MESSAGE,
-        device: str = None,
         nproc_per_node: int = 3,
         nnodes: int = 2,
         num_epochs_phase_1: int = NUM_EPOCHS_PHASE_1,
@@ -396,7 +395,6 @@ def pipeline_wrapper(mock: List[Literal[MOCKED_STAGES]]):
             models_path_prefix="/output/phase_2/model/hf_format",
             max_workers=max_workers,
             merge_system_user_message=merge_system_user_message,
-            device=device,
         )
         mount_pvc(
             task=run_mt_bench_task,
@@ -424,11 +422,9 @@ def pipeline_wrapper(mock: List[Literal[MOCKED_STAGES]]):
             # TODO: DO we need both candidate_branch and base_branch
             base_branch=repo_branch,
             candidate_branch=repo_branch,
-            device=device,
             base_model_dir="/model/",
             max_workers=max_workers,
             merge_system_user_message=merge_system_user_message,
-            model_dtype=model_dtype,
             few_shots=few_shots,
             batch_size=batch_size,
         )
@@ -562,7 +558,7 @@ def gen_standalone():
         "exec-git-clone-op": {},
         "exec-huggingface-importer-op": 'huggingface_importer_op(repo_name="{REPO_GRANITE_7B_IMAGE}", model_path="{DATA_PVC_MODEL_PATH}")',
         "exec-run-mt-bench-op": 'run_mt_bench_op(best_score_file="{MT_BENCH_SCORES_PATH}",output_path="{MT_BENCH_OUTPUT_PATH}",models_folder="{CANDIDATE_MODEL_PATH_PREFIX}",models_path_prefix="{CANDIDATE_MODEL_PATH_PREFIX}", max_workers="{MAX_WORKERS}", merge_system_user_message={MERGE_SYSTEM_USER_MESSAGE})',
-        "exec-run-final-eval-op": 'run_final_eval_op(mmlu_branch_output="{MMLU_BRANCH_SCORES_PATH}", mt_bench_branch_output="{MT_BENCH_BRANCH_SCORES_PATH}", candidate_model="{CANDIDATE_MODEL_PATH}", taxonomy_path="{TAXONOMY_PATH}", sdg_path="{DATA_PVC_SDG_PATH}", base_branch="", candidate_branch="", device=None, base_model_dir="{DATA_PVC_MODEL_PATH}", max_workers="{MAX_WORKERS}", merge_system_user_message={MERGE_SYSTEM_USER_MESSAGE}, model_dtype="{MODEL_DTYPE}", few_shots={FEW_SHOTS}, batch_size="{BATCH_SIZE}")',
+        "exec-run-final-eval-op": 'run_final_eval_op(mmlu_branch_output="{MMLU_BRANCH_SCORES_PATH}", mt_bench_branch_output="{MT_BENCH_BRANCH_SCORES_PATH}", candidate_model="{CANDIDATE_MODEL_PATH}", taxonomy_path="{TAXONOMY_PATH}", sdg_path="{DATA_PVC_SDG_PATH}", base_branch="", candidate_branch="", base_model_dir="{DATA_PVC_MODEL_PATH}", max_workers="{MAX_WORKERS}", merge_system_user_message={MERGE_SYSTEM_USER_MESSAGE}, model_dtype="{MODEL_DTYPE}", few_shots={FEW_SHOTS}, batch_size="{BATCH_SIZE}")',
     }
 
     details = {}
