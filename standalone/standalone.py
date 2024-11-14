@@ -77,13 +77,11 @@ PREPROCESSED_DATA_KNOWLEDGE_PATH = path.join(PREPROCESSED_DATA_PATH, "knowledge"
 MT_BENCH_OUTPUT_PATH = path.join(DATA_PVC_MOUNT_PATH, "mt-bench-results.txt")
 MT_BENCH_SCORES_PATH = path.join(DATA_PVC_MOUNT_PATH, "mt-bench-best.txt")
 MT_BENCH_BRANCH_SCORES_PATH = path.join(DATA_PVC_MOUNT_PATH, "mt-bench-branch-best.txt")
-MMLU_BRANCH_SCORES_PATH = path.join(DATA_PVC_MOUNT_PATH, "mmlu-branch-best.txt")
 CANDIDATE_MODEL_PATH_PREFIX = path.join(
     DATA_PVC_MOUNT_PATH, "model/output/phase_2/hf_format"
 )
 CANDIDATE_MODEL_PATH = path.join(CANDIDATE_MODEL_PATH_PREFIX, "candidate_model")
 TAXONOMY_DATA_PATH = path.join(DATA_PVC_MOUNT_PATH, "taxonomy")
-# MMLU_SCORES_PATH = "/output/mmlu-results.txt" - after training phase 1 is done MMLU is not performed anymore
 
 # TRAINING
 PYTORCH_NNODES = 2
@@ -303,13 +301,10 @@ if [ "$STRATEGY" == "upload" ]; then
     echo "Final data tarball path: $FINAL_DATA_TAR_PATH"
     echo "Final data tarball file: $FINAL_DATA_TAR_FILE"
     echo "Archiving data before pushing to the object store"
-    # Use '--ignore-failed-read' to ignore missing files, needed when no MMLU tasks directories are found MMLU_branch is skipped
-    # So '{mmlu_branch_scores_path}' will not exist
     tar --create \
       --gzip \
       --verbose \
-      --ignore-failed-read \
-      --file "$FINAL_DATA_TAR_PATH" {mt_bench_output_path} {mt_bench_scores_path} {mt_bench_branch_scores_path} {mmlu_branch_scores_path} {candidate_model_path}
+      --file "$FINAL_DATA_TAR_PATH" {mt_bench_output_path} {mt_bench_scores_path} {mt_bench_branch_scores_path} {candidate_model_path}
 fi
 
 tmp=$(mktemp -d)
@@ -988,14 +983,6 @@ def run(
         ctx.obj["training_phase"] = "1"
         ctx.invoke(train)
 
-        # Evaluation of phase 1 with MMLU
-        # ctx.obj["eval_type"] = "mmlu"
-        # scores = ctx.invoke(evaluation)
-        # scores = json.loads(scores)
-        # best_model = max(scores, key=lambda x: x["average_score"])
-        # logger.info("Best model: %s", best_model.get("model"))
-        # ctx.obj["model_to_train"] = best_model.get("model")
-
         # Training Phase 2
         ctx.obj["training_phase"] = "2"
         ctx.invoke(train)
@@ -1307,7 +1294,6 @@ data_processing_op(max_seq_len={MAX_SEQ_LEN}, max_batch_len={MAX_BATCH_LEN}, sdg
                 mt_bench_output_path=MT_BENCH_OUTPUT_PATH,
                 mt_bench_scores_path=MT_BENCH_SCORES_PATH,
                 mt_bench_branch_scores_path=MT_BENCH_BRANCH_SCORES_PATH,
-                mmlu_branch_scores_path=MMLU_BRANCH_SCORES_PATH,
                 candidate_model_path=CANDIDATE_MODEL_PATH,
                 sdg_in_cluster=sdg_in_cluster,
             )
@@ -1475,32 +1461,6 @@ def create_eval_job(
     """
 
     job_name = f"eval-{eval_type}"
-
-    # if eval_type == "mmlu":
-    #     init_containers = [
-    #         kubernetes.client.V1Container(
-    #             name=f"run-eval-{eval_type}",
-    #             image="",
-    #             command=,
-    #             args=,
-    #             volume_mounts=[
-    #                 kubernetes.client.V1VolumeMount(
-    #                     name=TRAINING_VOLUME_NAME, mount_path=TRAINING_PVC_MOUNT_PATH
-    #                 ),
-    #             ],
-    #         )
-    #     ]
-    #     container = kubernetes.client.V1Container(
-    #         name=f"output-eval-{eval_type}-scores",
-    #         image="",
-    #         command=["/bin/sh", "-c"],
-    #         args=[f"cat {MMLU_SCORES_PATH}"],
-    #         volume_mounts=[
-    #             kubernetes.client.V1VolumeMount(
-    #                 name=TRAINING_VOLUME_NAME, mount_path=TRAINING_PVC_MOUNT_PATH
-    #             ),
-    #         ],
-    #     )
 
     exec_run_mt_bench_op_command = """
 from typing import *
