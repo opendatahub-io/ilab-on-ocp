@@ -2,7 +2,7 @@
 # pylint: disable=no-value-for-parameter,import-outside-toplevel,import-error
 from typing import List, NamedTuple, Optional
 
-from kfp.dsl import Artifact, Input, Model, Output, component, importer
+from kfp.dsl import Artifact, Input, Output, component
 
 from utils.consts import PYTHON_IMAGE
 
@@ -85,7 +85,7 @@ def run_mmlu_op(
         all_mmlu_data.append(mmlu_data)
         scores[model_path] = average_score
 
-    with open(mmlu_output.path, "w") as f:
+    with open(mmlu_output.path, "w", encoding="utf-8") as f:
         json.dump(all_mmlu_data, f, indent=4)
     outputs = NamedTuple("outputs", best_model=str, best_score=float)
     best_model = max(scores, key=scores.get)
@@ -98,7 +98,7 @@ def load_mmlu_results_op(mmlu_output: Input[Artifact]) -> list:
     import json
 
     mmlu_score_list = []
-    with open(mmlu_output.path, "r") as f:
+    with open(mmlu_output.path, "r", encoding="utf-8") as f:
         mmlu_score_list = json.load(f)
 
     print("MMLU Evaluation Data:")

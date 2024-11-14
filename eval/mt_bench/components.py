@@ -18,7 +18,6 @@ def run_mt_bench_op(
     output_path: str = "/output/mt_bench_data.json",
     models_list: List[str] = None,
     models_folder: Optional[str] = None,
-    device: str = None,
     best_score_file: Optional[str] = None,
 ) -> NamedTuple("outputs", best_model=str, best_score=float):
     import json
@@ -119,8 +118,6 @@ def run_mt_bench_op(
                 f"Timeout expired. Forcefully killing vLLM server with PID: {process.pid}"
             )
             process.kill()  # Force kill the process if over timeout
-        except subprocess.NoSuchProcess:
-            print(f"Process with PID {process.pid} no longer exists.")
         except Exception as e:
             print(f"Failed to stop process with PID {process.pid}. Error: {e}")
         # Note from instructlab/model/backends/vllm.py
@@ -156,6 +153,8 @@ def run_mt_bench_op(
         try:
             usable_cpu_count = len(os.sched_getaffinity(0)) // 2
         except AttributeError:
+            import multiprocessing
+
             usable_cpu_count = multiprocessing.cpu_count() // 2
         max_workers = usable_cpu_count
 
