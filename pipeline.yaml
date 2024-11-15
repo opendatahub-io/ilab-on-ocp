@@ -2,29 +2,29 @@
 # Name: instructlab
 # Description: InstructLab pipeline
 # Inputs:
-#    base_model: str [Default: 'ibm-granite/granite-7b-base']
-#    batch_size: str [Default: 'auto']
-#    device: str
-#    effective_batch_size: int [Default: 3840.0]
-#    few_shots: int [Default: 5.0]
-#    learning_rate: float [Default: 0.0001]
-#    max_batch_len: int [Default: 20000.0]
-#    max_workers: str [Default: 'auto']
+#    eval_batch_size: str [Default: 'auto']
+#    eval_few_shots: int [Default: 5.0]
+#    eval_max_workers: str [Default: 'auto']
 #    merge_system_user_message: bool [Default: False]
-#    model_dtype: str [Default: 'bfloat16']
-#    nnodes: int [Default: 2.0]
-#    nproc_per_node: int [Default: 3.0]
-#    num_epochs_phase_1: int [Default: 2.0]
-#    num_epochs_phase_2: int [Default: 2.0]
-#    num_instructions_to_generate: int [Default: 2.0]
-#    num_warmup_steps: int [Default: 800.0]
-#    repo_branch: str
-#    repo_pr: int
-#    repo_url: str [Default: 'https://github.com/instructlab/taxonomy.git']
-#    save_samples: int [Default: 0.0]
+#    mt_bench_max_workers: str [Default: 'auto']
+#    sdg_base_model: str [Default: 'ibm-granite/granite-7b-base']
+#    sdg_max_batch_len: int [Default: 20000.0]
 #    sdg_pipeline: str [Default: 'simple']
-#    seed: int [Default: 42.0]
+#    sdg_repo_branch: str
+#    sdg_repo_pr: int
+#    sdg_repo_url: str [Default: 'https://github.com/instructlab/taxonomy.git']
+#    sdg_scale_factor: int [Default: 2.0]
 #    storage_class_name: str [Default: 'nfs-csi']
+#    train_effective_batch_size: int [Default: 3840.0]
+#    train_learning_rate: float [Default: 0.0001]
+#    train_max_batch_len: int [Default: 20000.0]
+#    train_nnodes: int [Default: 2.0]
+#    train_nproc_per_node: int [Default: 3.0]
+#    train_num_epochs_phase_1: int [Default: 2.0]
+#    train_num_epochs_phase_2: int [Default: 2.0]
+#    train_num_warmup_steps: int [Default: 800.0]
+#    train_save_samples: int [Default: 0.0]
+#    train_seed: int [Default: 42.0]
 components:
   comp-createpvc:
     executorLabel: exec-createpvc
@@ -492,16 +492,12 @@ components:
         candidate_model:
           isOptional: true
           parameterType: STRING
-        device:
-          parameterType: STRING
         few_shots:
           parameterType: NUMBER_INTEGER
         max_workers:
           parameterType: STRING
         merge_system_user_message:
           parameterType: BOOLEAN
-        model_dtype:
-          parameterType: STRING
         sdg_path:
           defaultValue: /input/sdg
           isOptional: true
@@ -525,9 +521,6 @@ components:
     inputDefinitions:
       parameters:
         best_score_file:
-          isOptional: true
-          parameterType: STRING
-        device:
           isOptional: true
           parameterType: STRING
         max_workers:
@@ -1175,28 +1168,28 @@ deploymentSpec:
           \ *\n\ndef run_final_eval_op(\n    mmlu_branch_output: Output[Artifact],\n\
           \    mt_bench_branch_output: Output[Artifact],\n    base_model_dir: str,\n\
           \    base_branch: str,\n    candidate_branch: str,\n    max_workers: str,\n\
-          \    device: str,\n    model_dtype: str,\n    few_shots: int,\n    batch_size:\
-          \ str,\n    merge_system_user_message: bool,\n    candidate_model: str =\
-          \ None,\n    taxonomy_path: str = \"/input/taxonomy\",\n    sdg_path: str\
-          \ = \"/input/sdg\",\n):\n    import json\n    import os\n    import subprocess\n\
-          \n    import torch\n    from instructlab.eval.mmlu import MMLU_TASKS, MMLUBranchEvaluator\n\
-          \    from instructlab.eval.mt_bench import MTBenchBranchEvaluator\n    from\
-          \ instructlab.model.evaluate import qa_pairs_to_qna_to_avg_scores, sort_score\n\
-          \n    if judge_ca_cert := os.getenv(\"JUDGE_CA_CERT_PATH\"):\n        import\
-          \ httpx\n        import openai\n\n        # Create a custom HTTP client\n\
-          \        class CustomHttpClient(httpx.Client):\n            def __init__(self,\
-          \ *args, **kwargs):\n                # Use the custom CA certificate\n \
-          \               kwargs.setdefault(\"verify\", judge_ca_cert)\n         \
-          \       super().__init__(*args, **kwargs)\n\n        # Create a new OpenAI\
-          \ class that uses the custom HTTP client\n        class CustomOpenAI(openai.OpenAI):\n\
-          \            def __init__(self, *args, **kwargs):\n                custom_client\
-          \ = CustomHttpClient()\n                super().__init__(http_client=custom_client,\
-          \ *args, **kwargs)\n\n        # Monkey patch the OpenAI class in the openai\
-          \ module, so that the eval lib can use it\n        openai.OpenAI = CustomOpenAI\n\
-          \n    print(\"Starting Final Eval...\")\n\n    def launch_vllm(\n      \
-          \  model_path: str, gpu_count: int, retries: int = 120, delay: int = 10\n\
-          \    ) -> tuple:\n        import subprocess\n        import sys\n      \
-          \  import time\n\n        import requests\n        from instructlab.model.backends.common\
+          \    few_shots: int,\n    batch_size: str,\n    merge_system_user_message:\
+          \ bool,\n    candidate_model: str = None,\n    taxonomy_path: str = \"/input/taxonomy\"\
+          ,\n    sdg_path: str = \"/input/sdg\",\n):\n    import json\n    import\
+          \ os\n    import subprocess\n\n    import torch\n    from instructlab.eval.mmlu\
+          \ import MMLU_TASKS, MMLUBranchEvaluator\n    from instructlab.eval.mt_bench\
+          \ import MTBenchBranchEvaluator\n    from instructlab.model.evaluate import\
+          \ qa_pairs_to_qna_to_avg_scores, sort_score\n\n    if judge_ca_cert := os.getenv(\"\
+          JUDGE_CA_CERT_PATH\"):\n        import httpx\n        import openai\n\n\
+          \        # Create a custom HTTP client\n        class CustomHttpClient(httpx.Client):\n\
+          \            def __init__(self, *args, **kwargs):\n                # Use\
+          \ the custom CA certificate\n                kwargs.setdefault(\"verify\"\
+          , judge_ca_cert)\n                super().__init__(*args, **kwargs)\n\n\
+          \        # Create a new OpenAI class that uses the custom HTTP client\n\
+          \        class CustomOpenAI(openai.OpenAI):\n            def __init__(self,\
+          \ *args, **kwargs):\n                custom_client = CustomHttpClient()\n\
+          \                super().__init__(http_client=custom_client, *args, **kwargs)\n\
+          \n        # Monkey patch the OpenAI class in the openai module, so that\
+          \ the eval lib can use it\n        openai.OpenAI = CustomOpenAI\n\n    print(\"\
+          Starting Final Eval...\")\n\n    def launch_vllm(\n        model_path: str,\
+          \ gpu_count: int, retries: int = 120, delay: int = 10\n    ) -> tuple:\n\
+          \        import subprocess\n        import sys\n        import time\n\n\
+          \        import requests\n        from instructlab.model.backends.common\
           \ import free_tcp_ipv4_port\n\n        free_port = free_tcp_ipv4_port(\"\
           127.0.0.1\")\n        port = str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\
           \n\n        command = [\n            sys.executable,\n            \"-m\"\
@@ -1441,41 +1434,40 @@ deploymentSpec:
           \ is calculated based on environment\n    # https://github.com/instructlab/eval/blob/main/src/instructlab/eval/mt_bench.py#L36\n\
           \    max_workers: str,\n    output_path: str = \"/output/mt_bench_data.json\"\
           ,\n    models_list: List[str] = None,\n    models_folder: Optional[str]\
-          \ = None,\n    device: str = None,\n    best_score_file: Optional[str] =\
-          \ None,\n) -> NamedTuple(\"outputs\", best_model=str, best_score=float):\n\
-          \    import json\n    import os\n    import subprocess\n\n    import torch\n\
-          \    from instructlab.eval.mt_bench import MTBenchEvaluator\n\n    if judge_ca_cert\
-          \ := os.getenv(\"JUDGE_CA_CERT_PATH\"):\n        import httpx\n        import\
-          \ openai\n\n        # Create a custom HTTP client\n        class CustomHttpClient(httpx.Client):\n\
-          \            def __init__(self, *args, **kwargs):\n                # Use\
-          \ the custom CA certificate\n                kwargs.setdefault(\"verify\"\
-          , judge_ca_cert)\n                super().__init__(*args, **kwargs)\n\n\
-          \        # Create a new OpenAI class that uses the custom HTTP client\n\
-          \        class CustomOpenAI(openai.OpenAI):\n            def __init__(self,\
-          \ *args, **kwargs):\n                custom_client = CustomHttpClient()\n\
-          \                super().__init__(http_client=custom_client, *args, **kwargs)\n\
-          \n        # Monkey patch the OpenAI class in the openai module, so that\
-          \ the eval lib can use it\n        openai.OpenAI = CustomOpenAI\n\n    def\
-          \ launch_vllm(\n        model_path: str, gpu_count: int, retries: int =\
-          \ 120, delay: int = 10\n    ) -> tuple:\n        import subprocess\n   \
-          \     import sys\n        import time\n\n        import requests\n     \
-          \   from instructlab.model.backends.common import free_tcp_ipv4_port\n\n\
-          \        free_port = free_tcp_ipv4_port(\"127.0.0.1\")\n        port = str(free_port)\n\
-          \        vllm_server = f\"http://127.0.0.1:{port}/v1\"\n\n        command\
-          \ = [\n            sys.executable,\n            \"-m\",\n            \"\
-          vllm.entrypoints.openai.api_server\",\n            \"--port\",\n       \
-          \     port,\n            \"--model\",\n            model_path,\n       \
-          \ ]\n        if gpu_count > 0:\n            command += [\n             \
-          \   \"--tensor-parallel-size\",\n                str(gpu_count),\n     \
-          \       ]\n\n        process = subprocess.Popen(args=command)\n\n      \
-          \  print(f\"Waiting for vLLM server to start at {vllm_server}...\")\n\n\
-          \        for attempt in range(retries):\n            try:\n            \
-          \    response = requests.get(f\"{vllm_server}/models\")\n              \
-          \  if response.status_code == 200:\n                    print(f\"vLLM server\
-          \ is up and running at {vllm_server}.\")\n                    return process,\
-          \ vllm_server\n            except requests.ConnectionError:\n          \
-          \      pass\n\n            print(\n                f\"Server not available\
-          \ yet, retrying in {delay} seconds (Attempt {attempt + 1}/{retries})...\"\
+          \ = None,\n    best_score_file: Optional[str] = None,\n) -> NamedTuple(\"\
+          outputs\", best_model=str, best_score=float):\n    import json\n    import\
+          \ os\n    import subprocess\n\n    import torch\n    from instructlab.eval.mt_bench\
+          \ import MTBenchEvaluator\n\n    if judge_ca_cert := os.getenv(\"JUDGE_CA_CERT_PATH\"\
+          ):\n        import httpx\n        import openai\n\n        # Create a custom\
+          \ HTTP client\n        class CustomHttpClient(httpx.Client):\n         \
+          \   def __init__(self, *args, **kwargs):\n                # Use the custom\
+          \ CA certificate\n                kwargs.setdefault(\"verify\", judge_ca_cert)\n\
+          \                super().__init__(*args, **kwargs)\n\n        # Create a\
+          \ new OpenAI class that uses the custom HTTP client\n        class CustomOpenAI(openai.OpenAI):\n\
+          \            def __init__(self, *args, **kwargs):\n                custom_client\
+          \ = CustomHttpClient()\n                super().__init__(http_client=custom_client,\
+          \ *args, **kwargs)\n\n        # Monkey patch the OpenAI class in the openai\
+          \ module, so that the eval lib can use it\n        openai.OpenAI = CustomOpenAI\n\
+          \n    def launch_vllm(\n        model_path: str, gpu_count: int, retries:\
+          \ int = 120, delay: int = 10\n    ) -> tuple:\n        import subprocess\n\
+          \        import sys\n        import time\n\n        import requests\n  \
+          \      from instructlab.model.backends.common import free_tcp_ipv4_port\n\
+          \n        free_port = free_tcp_ipv4_port(\"127.0.0.1\")\n        port =\
+          \ str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\n\
+          \n        command = [\n            sys.executable,\n            \"-m\",\n\
+          \            \"vllm.entrypoints.openai.api_server\",\n            \"--port\"\
+          ,\n            port,\n            \"--model\",\n            model_path,\n\
+          \        ]\n        if gpu_count > 0:\n            command += [\n      \
+          \          \"--tensor-parallel-size\",\n                str(gpu_count),\n\
+          \            ]\n\n        process = subprocess.Popen(args=command)\n\n \
+          \       print(f\"Waiting for vLLM server to start at {vllm_server}...\"\
+          )\n\n        for attempt in range(retries):\n            try:\n        \
+          \        response = requests.get(f\"{vllm_server}/models\")\n          \
+          \      if response.status_code == 200:\n                    print(f\"vLLM\
+          \ server is up and running at {vllm_server}.\")\n                    return\
+          \ process, vllm_server\n            except requests.ConnectionError:\n \
+          \               pass\n\n            print(\n                f\"Server not\
+          \ available yet, retrying in {delay} seconds (Attempt {attempt + 1}/{retries})...\"\
           \n            )\n            time.sleep(delay)\n\n        raise RuntimeError(\n\
           \            f\"Failed to start vLLM server at {vllm_server} after {retries}\
           \ retries.\"\n        )\n\n    def shutdown_vllm(process: subprocess.Popen,\
@@ -1709,6 +1701,10 @@ root:
         - createpvc-2
         - huggingface-importer-op
         - sdg-op
+        inputs:
+          parameters:
+            max_batch_len:
+              componentInputParameter: sdg_max_batch_len
         taskInfo:
           name: data-processing-op
       deletepvc:
@@ -1770,11 +1766,11 @@ root:
         inputs:
           parameters:
             repo_branch:
-              componentInputParameter: repo_branch
+              componentInputParameter: sdg_repo_branch
             repo_pr:
-              componentInputParameter: repo_pr
+              componentInputParameter: sdg_repo_pr
             repo_url:
-              componentInputParameter: repo_url
+              componentInputParameter: sdg_repo_url
         taskInfo:
           name: git-clone-op
       huggingface-importer-op:
@@ -1786,7 +1782,7 @@ root:
         inputs:
           parameters:
             repo_name:
-              componentInputParameter: base_model
+              componentInputParameter: sdg_base_model
         taskInfo:
           name: huggingface-importer-op
       knowledge-processed-data-to-artifact-op:
@@ -1924,15 +1920,15 @@ root:
         inputs:
           parameters:
             effective_batch_size:
-              componentInputParameter: effective_batch_size
+              componentInputParameter: train_effective_batch_size
             input_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
                 producerTask: createpvc
             learning_rate:
-              componentInputParameter: learning_rate
+              componentInputParameter: train_learning_rate
             max_batch_len:
-              componentInputParameter: max_batch_len
+              componentInputParameter: train_max_batch_len
             model_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
@@ -1942,13 +1938,13 @@ root:
                 outputParameterKey: name
                 producerTask: createpvc
             nnodes:
-              componentInputParameter: nnodes
+              componentInputParameter: train_nnodes
             nproc_per_node:
-              componentInputParameter: nproc_per_node
+              componentInputParameter: train_nproc_per_node
             num_epochs:
-              componentInputParameter: num_epochs_phase_1
+              componentInputParameter: train_num_epochs_phase_1
             num_warmup_steps:
-              componentInputParameter: num_warmup_steps
+              componentInputParameter: train_num_warmup_steps
             output_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
@@ -1957,9 +1953,9 @@ root:
               runtimeValue:
                 constant: 1.0
             save_samples:
-              componentInputParameter: save_samples
+              componentInputParameter: train_save_samples
             seed:
-              componentInputParameter: seed
+              componentInputParameter: train_seed
         taskInfo:
           name: pytorchjob-manifest-op
       pytorchjob-manifest-op-2:
@@ -1974,15 +1970,15 @@ root:
         inputs:
           parameters:
             effective_batch_size:
-              componentInputParameter: effective_batch_size
+              componentInputParameter: train_effective_batch_size
             input_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
                 producerTask: createpvc
             learning_rate:
-              componentInputParameter: learning_rate
+              componentInputParameter: train_learning_rate
             max_batch_len:
-              componentInputParameter: max_batch_len
+              componentInputParameter: train_max_batch_len
             model_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
@@ -1992,13 +1988,13 @@ root:
                 outputParameterKey: name
                 producerTask: createpvc
             nnodes:
-              componentInputParameter: nnodes
+              componentInputParameter: train_nnodes
             nproc_per_node:
-              componentInputParameter: nproc_per_node
+              componentInputParameter: train_nproc_per_node
             num_epochs:
-              componentInputParameter: num_epochs_phase_2
+              componentInputParameter: train_num_epochs_phase_2
             num_warmup_steps:
-              componentInputParameter: num_warmup_steps
+              componentInputParameter: train_num_warmup_steps
             output_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
@@ -2007,9 +2003,9 @@ root:
               runtimeValue:
                 constant: 2.0
             save_samples:
-              componentInputParameter: save_samples
+              componentInputParameter: train_save_samples
             seed:
-              componentInputParameter: seed
+              componentInputParameter: train_seed
         taskInfo:
           name: pytorchjob-manifest-op-2
       run-final-eval-op:
@@ -2025,27 +2021,23 @@ root:
         inputs:
           parameters:
             base_branch:
-              componentInputParameter: repo_branch
+              componentInputParameter: sdg_repo_branch
             base_model_dir:
               runtimeValue:
                 constant: /model/
             batch_size:
-              componentInputParameter: batch_size
+              componentInputParameter: eval_batch_size
             candidate_branch:
-              componentInputParameter: repo_branch
+              componentInputParameter: sdg_repo_branch
             candidate_model:
               runtimeValue:
                 constant: /output/phase_2/model/hf_format/candidate_model
-            device:
-              componentInputParameter: device
             few_shots:
-              componentInputParameter: few_shots
+              componentInputParameter: eval_few_shots
             max_workers:
-              componentInputParameter: max_workers
+              componentInputParameter: eval_max_workers
             merge_system_user_message:
               componentInputParameter: merge_system_user_message
-            model_dtype:
-              componentInputParameter: model_dtype
         taskInfo:
           name: run-final-eval-op
       run-mt-bench-op:
@@ -2057,10 +2049,8 @@ root:
         - list-models-in-directory-op
         inputs:
           parameters:
-            device:
-              componentInputParameter: device
             max_workers:
-              componentInputParameter: max_workers
+              componentInputParameter: mt_bench_max_workers
             merge_system_user_message:
               componentInputParameter: merge_system_user_message
             models_list:
@@ -2082,13 +2072,13 @@ root:
         inputs:
           parameters:
             num_instructions_to_generate:
-              componentInputParameter: num_instructions_to_generate
+              componentInputParameter: sdg_scale_factor
             pipeline:
               componentInputParameter: sdg_pipeline
             repo_branch:
-              componentInputParameter: repo_branch
+              componentInputParameter: sdg_repo_branch
             repo_pr:
-              componentInputParameter: repo_pr
+              componentInputParameter: sdg_repo_pr
         taskInfo:
           name: sdg-op
       sdg-to-artifact-op:
@@ -2124,34 +2114,15 @@ root:
           name: taxonomy-to-artifact-op
   inputDefinitions:
     parameters:
-      base_model:
-        defaultValue: ibm-granite/granite-7b-base
-        isOptional: true
-        parameterType: STRING
-      batch_size:
+      eval_batch_size:
         defaultValue: auto
         isOptional: true
         parameterType: STRING
-      device:
-        isOptional: true
-        parameterType: STRING
-      effective_batch_size:
-        defaultValue: 3840.0
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      few_shots:
+      eval_few_shots:
         defaultValue: 5.0
         isOptional: true
         parameterType: NUMBER_INTEGER
-      learning_rate:
-        defaultValue: 0.0001
-        isOptional: true
-        parameterType: NUMBER_DOUBLE
-      max_batch_len:
-        defaultValue: 20000.0
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      max_workers:
+      eval_max_workers:
         defaultValue: auto
         isOptional: true
         parameterType: STRING
@@ -2159,60 +2130,90 @@ root:
         defaultValue: false
         isOptional: true
         parameterType: BOOLEAN
-      model_dtype:
-        defaultValue: bfloat16
+      mt_bench_max_workers:
+        defaultValue: auto
         isOptional: true
         parameterType: STRING
-      nnodes:
-        defaultValue: 2.0
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      nproc_per_node:
-        defaultValue: 3.0
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      num_epochs_phase_1:
-        defaultValue: 2.0
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      num_epochs_phase_2:
-        defaultValue: 2.0
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      num_instructions_to_generate:
-        defaultValue: 2.0
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      num_warmup_steps:
-        defaultValue: 800.0
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      repo_branch:
+      sdg_base_model:
+        defaultValue: ibm-granite/granite-7b-base
+        description: SDG parameter. LLM model used to generate the synthetic dataset
         isOptional: true
         parameterType: STRING
-      repo_pr:
-        isOptional: true
-        parameterType: NUMBER_INTEGER
-      repo_url:
-        defaultValue: https://github.com/instructlab/taxonomy.git
-        isOptional: true
-        parameterType: STRING
-      save_samples:
-        defaultValue: 0.0
+      sdg_max_batch_len:
+        defaultValue: 20000.0
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_pipeline:
         defaultValue: simple
+        description: 'SDG parameter. Data generation pipeline to use. Available: ''simple'',
+          ''full'', or a valid path to a directory of pipeline workflow YAML files.
+          Note that ''full'' requires a larger teacher model, Mixtral-8x7b.'
         isOptional: true
         parameterType: STRING
-      seed:
-        defaultValue: 42.0
+      sdg_repo_branch:
+        description: SDG parameter. Points to a branch within the taxonomy git repository.
+          If set, has priority over sdg_repo_pr
+        isOptional: true
+        parameterType: STRING
+      sdg_repo_pr:
+        description: SDG parameter. Points to a pull request against the taxonomy
+          git repository
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      sdg_repo_url:
+        defaultValue: https://github.com/instructlab/taxonomy.git
+        description: SDG parameter. Points to a taxonomy git repository
+        isOptional: true
+        parameterType: STRING
+      sdg_scale_factor:
+        defaultValue: 2.0
+        description: SDG parameter. The total number of instructions to be generated.
         isOptional: true
         parameterType: NUMBER_INTEGER
       storage_class_name:
         defaultValue: nfs-csi
         isOptional: true
         parameterType: STRING
+      train_effective_batch_size:
+        defaultValue: 3840.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_learning_rate:
+        defaultValue: 0.0001
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      train_max_batch_len:
+        defaultValue: 20000.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_nnodes:
+        defaultValue: 2.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_nproc_per_node:
+        defaultValue: 3.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_num_epochs_phase_1:
+        defaultValue: 2.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_num_epochs_phase_2:
+        defaultValue: 2.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_num_warmup_steps:
+        defaultValue: 800.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_save_samples:
+        defaultValue: 0.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_seed:
+        defaultValue: 42.0
+        isOptional: true
+        parameterType: NUMBER_INTEGER
 schemaVersion: 2.1.0
 sdkVersion: kfp-2.10.0
 ---
