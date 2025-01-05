@@ -1,7 +1,6 @@
 FROM nvcr.io/nvidia/cuda:12.6.3-cudnn-devel-ubi9
 
-RUN dnf -y install openblas-devel git python3-pip && \
-    dnf install -y libcudnn8 nvidia-driver-NVML nvidia-driver-cuda-libs && \
+RUN dnf -y install libcudnn8 nvidia-driver-NVML nvidia-driver-cuda-libs openblas-devel git python3-pip && \
     dnf clean all
 
 RUN pip cache remove llama_cpp_python
