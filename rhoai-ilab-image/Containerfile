@@ -1,4 +1,9 @@
-FROM registry.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.3
+FROM nvcr.io/nvidia/cuda:12.6.3-cudnn-devel-ubi9
 
+RUN dnf -y install libcudnn8 nvidia-driver-NVML nvidia-driver-cuda-libs openblas-devel git python3-pip && \
+    dnf clean all
+
+RUN pip cache remove llama_cpp_python
 RUN pip install kfp==2.9.0
 RUN pip install kubeflow-training
+RUN CMAKE_ARGS="-DLLAMA_CUDA=on -DLLAMA_NATIVE=off" pip install 'instructlab[cuda]'
