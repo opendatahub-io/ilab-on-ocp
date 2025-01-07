@@ -16,6 +16,9 @@ from kfp.kubernetes import (
     use_secret_as_volume,
 )
 
+from utils.consts import RHELAI_IMAGE
+
+
 TEACHER_CONFIG_MAP = "teacher-server"
 TEACHER_SECRET = "teacher-server"
 JUDGE_CONFIG_MAP = "judge-server"
@@ -310,6 +313,7 @@ def ilab_pipeline_wrapper(mock: List[Literal[MOCKED_STAGES]]):
             save_samples=train_save_samples,
             max_batch_len=train_max_batch_len,
             seed=train_seed,
+            image=RHELAI_IMAGE,
         )
         training_phase_1.after(data_processing_task, model_to_pvc_task)
         training_phase_1.set_caching_options(False)
@@ -330,6 +334,7 @@ def ilab_pipeline_wrapper(mock: List[Literal[MOCKED_STAGES]]):
             save_samples=train_save_samples,
             max_batch_len=train_max_batch_len,
             seed=train_seed,
+            image=RHELAI_IMAGE,
         )
 
         training_phase_2.set_caching_options(False)

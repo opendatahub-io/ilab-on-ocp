@@ -126,6 +126,7 @@ def pytorchjob_manifest_op(
     input_pvc_name: str,
     output_pvc_name: str,
     name_suffix: str,
+    image: str,
     # path_to_model: str,
     phase_num: int,
     nproc_per_node: int = 3,
@@ -166,8 +167,6 @@ def pytorchjob_manifest_op(
         path_to_data = "/input_data/skills/data.jsonl"
     else:
         raise RuntimeError(f"Unsupported value of {phase_num=}")
-
-    image = "registry.stage.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.3.1"
 
     manifest = inspect.cleandoc(
         f"""
