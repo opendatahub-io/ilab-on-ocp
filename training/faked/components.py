@@ -14,6 +14,7 @@ def pytorchjob_manifest_op(
     input_pvc_name: str,
     output_pvc_name: str,
     name_suffix: str,
+    image: str,
 ) -> NamedTuple("outputs", manifest=str, name=str):
     Outputs = NamedTuple("outputs", manifest=str, name=str)
     return Outputs("", "")
