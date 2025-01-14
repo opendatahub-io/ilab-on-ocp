@@ -167,7 +167,7 @@ def pytorchjob_manifest_op(
     else:
         raise RuntimeError(f"Unsupported value of {phase_num=}")
 
-    image = "registry.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.3.1"
+    image = os.getenv("TRAINING_PYTORCHJOB_BASE_IMAGE")
 
     manifest = inspect.cleandoc(
         f"""

@@ -36,6 +36,7 @@ from utils import (
     pvc_to_model_op,
     pvc_to_mt_bench_op,
 )
+from utils.consts import RHELAI_IMAGE  # To pass to training PyTorchJobs
 
 TEACHER_CONFIG_MAP = "teacher-server"
 TEACHER_SECRET = "teacher-server"
@@ -281,6 +282,7 @@ def ilab_pipeline(
         seed=train_seed,
     )
     training_phase_1.after(data_processing_task, model_to_pvc_task)
+    training_phase_1.set_env_variable("TRAINING_PYTORCHJOB_BASE_IMAGE", RHELAI_IMAGE)
     training_phase_1.set_caching_options(False)
 
     #### Train 2
@@ -302,6 +304,7 @@ def ilab_pipeline(
     )
 
     training_phase_2.set_caching_options(False)
+    training_phase_2.set_env_variable("TRAINING_PYTORCHJOB_BASE_IMAGE", RHELAI_IMAGE)
     training_phase_2.after(training_phase_1)
 
     mount_pvc(
