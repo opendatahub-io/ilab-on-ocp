@@ -747,8 +747,8 @@ deploymentSpec:
           \       path_to_data = \"/input_data/knowledge/data.jsonl\"\n    elif phase_num\
           \ == 2:\n        path_to_model = list_phase1_final_model()\n        path_to_data\
           \ = \"/input_data/skills/data.jsonl\"\n    else:\n        raise RuntimeError(f\"\
-          Unsupported value of {phase_num=}\")\n\n    image = \"registry.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.3.1\"\
-          \n\n    manifest = inspect.cleandoc(\n        f\"\"\"\n        apiVersion:\
+          Unsupported value of {phase_num=}\")\n\n    image = os.getenv(\"TRAINING_PYTORCHJOB_BASE_IMAGE\"\
+          )\n\n    manifest = inspect.cleandoc(\n        f\"\"\"\n        apiVersion:\
           \ kubeflow.org/v1\n        kind: PyTorchJob\n        metadata:\n       \
           \   name: {name}\n        spec:\n          nprocPerNode: \\\"{nproc_per_node}\\\
           \"\n          pytorchReplicaSpecs:\n            Master:\n              replicas:\
@@ -914,6 +914,9 @@ deploymentSpec:
           \ as e:\n            print(f\"Connection broken reconnecting the watcher\
           \ {str(e)}\")\n            time.sleep(5)  # Backoff before retrying\n  \
           \      finally:\n            w.stop()\n\n"
+        env:
+        - name: TRAINING_PYTORCHJOB_BASE_IMAGE
+          value: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.3.1
         image: quay.io/modh/odh-generic-data-science-notebook:v3-2024b-20241111
     exec-pytorchjob-manifest-op-2:
       container:
@@ -951,8 +954,8 @@ deploymentSpec:
           \       path_to_data = \"/input_data/knowledge/data.jsonl\"\n    elif phase_num\
           \ == 2:\n        path_to_model = list_phase1_final_model()\n        path_to_data\
           \ = \"/input_data/skills/data.jsonl\"\n    else:\n        raise RuntimeError(f\"\
-          Unsupported value of {phase_num=}\")\n\n    image = \"registry.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.3.1\"\
-          \n\n    manifest = inspect.cleandoc(\n        f\"\"\"\n        apiVersion:\
+          Unsupported value of {phase_num=}\")\n\n    image = os.getenv(\"TRAINING_PYTORCHJOB_BASE_IMAGE\"\
+          )\n\n    manifest = inspect.cleandoc(\n        f\"\"\"\n        apiVersion:\
           \ kubeflow.org/v1\n        kind: PyTorchJob\n        metadata:\n       \
           \   name: {name}\n        spec:\n          nprocPerNode: \\\"{nproc_per_node}\\\
           \"\n          pytorchReplicaSpecs:\n            Master:\n              replicas:\
@@ -1118,6 +1121,9 @@ deploymentSpec:
           \ as e:\n            print(f\"Connection broken reconnecting the watcher\
           \ {str(e)}\")\n            time.sleep(5)  # Backoff before retrying\n  \
           \      finally:\n            w.stop()\n\n"
+        env:
+        - name: TRAINING_PYTORCHJOB_BASE_IMAGE
+          value: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.3.1
         image: quay.io/modh/odh-generic-data-science-notebook:v3-2024b-20241111
     exec-run-final-eval-op:
       container:
