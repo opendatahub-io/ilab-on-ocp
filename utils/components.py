@@ -56,13 +56,16 @@ def model_to_pvc_op(model: dsl.Input[dsl.Model], pvc_path: str = "/model"):
         [f"cp -r {model.path}/* {pvc_path}"],
     )
 
+
 @dsl.container_component
-def tarball_to_pvc_op(tarball_location: dsl.Input[dsl.Dataset], pvc_path: str = "/data", tarball_filename: str = ""):
+def extract_tarball_to_pvc_op(
+    tarball_location: dsl.Input[dsl.Dataset], pvc_path: str = "/data"
+):
     return dsl.ContainerSpec(
         TOOLBOX_IMAGE,
         ["/bin/sh", "-c"],
         [
-            f"cp {tarball_location.path} {pvc_path}/ && if [ ! -z '{tarball_filename}' ]; then tar -xvzf {pvc_path}/{tarball_filename} -C {pvc_path}; fi",
+            f"tb_filename=`basename {tarball_location.path}` && cp {tarball_location.path} {pvc_path}/ && tar -xvzf {pvc_path}/$tb_filename -C {pvc_path}",
         ],
     )
 

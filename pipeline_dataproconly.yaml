@@ -1,0 +1,1489 @@
+# PIPELINE DEFINITION
+# Name: instructlab
+# Description: InstructLab pipeline
+# Inputs:
+#    final_eval_batch_size: str [Default: 'auto']
+#    final_eval_few_shots: int [Default: 5.0]
+#    final_eval_max_workers: str [Default: 'auto']
+#    final_eval_merge_system_user_message: bool [Default: False]
+#    k8s_storage_class_name: str [Default: 'standard']
+#    mt_bench_max_workers: str [Default: 'auto']
+#    mt_bench_merge_system_user_message: bool [Default: False]
+#    sdg_base_model: str [Default: 's3://<BUCKET>/<PATH_TO_MODEL>']
+#    sdg_max_batch_len: int [Default: 5000.0]
+#    sdg_pipeline: str [Default: '/usr/share/instructlab/sdg/pipelines/agentic']
+#    sdg_pregenerated_tarball: str
+#    sdg_repo_branch: str
+#    sdg_repo_pr: int
+#    sdg_repo_url: str [Default: 'https://github.com/instructlab/taxonomy.git']
+#    sdg_sample_size: float [Default: 1.0]
+#    sdg_scale_factor: int [Default: 30.0]
+#    train_effective_batch_size_phase_1: int [Default: 128.0]
+#    train_effective_batch_size_phase_2: int [Default: 3840.0]
+#    train_learning_rate_phase_1: float [Default: 2e-05]
+#    train_learning_rate_phase_2: float [Default: 6e-06]
+#    train_max_batch_len: int [Default: 5000.0]
+#    train_nnodes: int [Default: 2.0]
+#    train_nproc_per_node: int [Default: 2.0]
+#    train_num_epochs_phase_1: int [Default: 7.0]
+#    train_num_epochs_phase_2: int [Default: 10.0]
+#    train_num_warmup_steps_phase_1: int [Default: 1000.0]
+#    train_num_warmup_steps_phase_2: int [Default: 1000.0]
+#    train_save_samples: int [Default: 250000.0]
+#    train_seed: int [Default: 42.0]
+components:
+  comp-createpvc:
+    executorLabel: exec-createpvc
+    inputDefinitions:
+      parameters:
+        access_modes:
+          description: 'AccessModes to request for the provisioned PVC. May
+
+            be one or more of ``''ReadWriteOnce''``, ``''ReadOnlyMany''``, ``''ReadWriteMany''``,
+            or
+
+            ``''ReadWriteOncePod''``. Corresponds to `PersistentVolumeClaim.spec.accessModes
+            <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`_.'
+          parameterType: LIST
+        annotations:
+          description: Annotations for the PVC's metadata. Corresponds to `PersistentVolumeClaim.metadata.annotations
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaim>`_.
+          isOptional: true
+          parameterType: STRUCT
+        pvc_name:
+          description: 'Name of the PVC. Corresponds to `PersistentVolumeClaim.metadata.name
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaim>`_.
+            Only one of ``pvc_name`` and ``pvc_name_suffix`` can
+
+            be provided.'
+          isOptional: true
+          parameterType: STRING
+        pvc_name_suffix:
+          description: 'Prefix to use for a dynamically generated name, which
+
+            will take the form ``<argo-workflow-name>-<pvc_name_suffix>``. Only one
+
+            of ``pvc_name`` and ``pvc_name_suffix`` can be provided.'
+          isOptional: true
+          parameterType: STRING
+        size:
+          description: The size of storage requested by the PVC that will be provisioned.
+            For example, ``'5Gi'``. Corresponds to `PersistentVolumeClaim.spec.resources.requests.storage
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaimSpec>`_.
+          parameterType: STRING
+        storage_class_name:
+          defaultValue: ''
+          description: 'Name of StorageClass from which to provision the PV
+
+            to back the PVC. ``None`` indicates to use the cluster''s default
+
+            storage_class_name. Set to ``''''`` for a statically specified PVC.'
+          isOptional: true
+          parameterType: STRING
+        volume_name:
+          description: 'Pre-existing PersistentVolume that should back the
+
+            provisioned PersistentVolumeClaim. Used for statically
+
+            specified PV only. Corresponds to `PersistentVolumeClaim.spec.volumeName
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaimSpec>`_.'
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        name:
+          parameterType: STRING
+  comp-createpvc-2:
+    executorLabel: exec-createpvc-2
+    inputDefinitions:
+      parameters:
+        access_modes:
+          description: 'AccessModes to request for the provisioned PVC. May
+
+            be one or more of ``''ReadWriteOnce''``, ``''ReadOnlyMany''``, ``''ReadWriteMany''``,
+            or
+
+            ``''ReadWriteOncePod''``. Corresponds to `PersistentVolumeClaim.spec.accessModes
+            <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`_.'
+          parameterType: LIST
+        annotations:
+          description: Annotations for the PVC's metadata. Corresponds to `PersistentVolumeClaim.metadata.annotations
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaim>`_.
+          isOptional: true
+          parameterType: STRUCT
+        pvc_name:
+          description: 'Name of the PVC. Corresponds to `PersistentVolumeClaim.metadata.name
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaim>`_.
+            Only one of ``pvc_name`` and ``pvc_name_suffix`` can
+
+            be provided.'
+          isOptional: true
+          parameterType: STRING
+        pvc_name_suffix:
+          description: 'Prefix to use for a dynamically generated name, which
+
+            will take the form ``<argo-workflow-name>-<pvc_name_suffix>``. Only one
+
+            of ``pvc_name`` and ``pvc_name_suffix`` can be provided.'
+          isOptional: true
+          parameterType: STRING
+        size:
+          description: The size of storage requested by the PVC that will be provisioned.
+            For example, ``'5Gi'``. Corresponds to `PersistentVolumeClaim.spec.resources.requests.storage
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaimSpec>`_.
+          parameterType: STRING
+        storage_class_name:
+          defaultValue: ''
+          description: 'Name of StorageClass from which to provision the PV
+
+            to back the PVC. ``None`` indicates to use the cluster''s default
+
+            storage_class_name. Set to ``''''`` for a statically specified PVC.'
+          isOptional: true
+          parameterType: STRING
+        volume_name:
+          description: 'Pre-existing PersistentVolume that should back the
+
+            provisioned PersistentVolumeClaim. Used for statically
+
+            specified PV only. Corresponds to `PersistentVolumeClaim.spec.volumeName
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaimSpec>`_.'
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        name:
+          parameterType: STRING
+  comp-createpvc-3:
+    executorLabel: exec-createpvc-3
+    inputDefinitions:
+      parameters:
+        access_modes:
+          description: 'AccessModes to request for the provisioned PVC. May
+
+            be one or more of ``''ReadWriteOnce''``, ``''ReadOnlyMany''``, ``''ReadWriteMany''``,
+            or
+
+            ``''ReadWriteOncePod''``. Corresponds to `PersistentVolumeClaim.spec.accessModes
+            <https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes>`_.'
+          parameterType: LIST
+        annotations:
+          description: Annotations for the PVC's metadata. Corresponds to `PersistentVolumeClaim.metadata.annotations
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaim>`_.
+          isOptional: true
+          parameterType: STRUCT
+        pvc_name:
+          description: 'Name of the PVC. Corresponds to `PersistentVolumeClaim.metadata.name
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaim>`_.
+            Only one of ``pvc_name`` and ``pvc_name_suffix`` can
+
+            be provided.'
+          isOptional: true
+          parameterType: STRING
+        pvc_name_suffix:
+          description: 'Prefix to use for a dynamically generated name, which
+
+            will take the form ``<argo-workflow-name>-<pvc_name_suffix>``. Only one
+
+            of ``pvc_name`` and ``pvc_name_suffix`` can be provided.'
+          isOptional: true
+          parameterType: STRING
+        size:
+          description: The size of storage requested by the PVC that will be provisioned.
+            For example, ``'5Gi'``. Corresponds to `PersistentVolumeClaim.spec.resources.requests.storage
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaimSpec>`_.
+          parameterType: STRING
+        storage_class_name:
+          defaultValue: ''
+          description: 'Name of StorageClass from which to provision the PV
+
+            to back the PVC. ``None`` indicates to use the cluster''s default
+
+            storage_class_name. Set to ``''''`` for a statically specified PVC.'
+          isOptional: true
+          parameterType: STRING
+        volume_name:
+          description: 'Pre-existing PersistentVolume that should back the
+
+            provisioned PersistentVolumeClaim. Used for statically
+
+            specified PV only. Corresponds to `PersistentVolumeClaim.spec.volumeName
+            <https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/persistent-volume-claim-v1/#PersistentVolumeClaimSpec>`_.'
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      parameters:
+        name:
+          parameterType: STRING
+  comp-data-processing-op:
+    executorLabel: exec-data-processing-op
+    inputDefinitions:
+      parameters:
+        knowledge_path:
+          defaultValue: /data/knowledge
+          isOptional: true
+          parameterType: STRING
+        max_batch_len:
+          defaultValue: 20000.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        max_seq_len:
+          defaultValue: 4096.0
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        model_path:
+          defaultValue: /model
+          isOptional: true
+          parameterType: STRING
+        sdg_path:
+          defaultValue: /data/sdg
+          isOptional: true
+          parameterType: STRING
+        skills_path:
+          defaultValue: /data/skills
+          isOptional: true
+          parameterType: STRING
+  comp-deletepvc:
+    executorLabel: exec-deletepvc
+    inputDefinitions:
+      parameters:
+        pvc_name:
+          description: Name of the PVC to delete. Supports passing a runtime-generated
+            name, such as a name provided by ``kubernetes.CreatePvcOp().outputs['name']``.
+          parameterType: STRING
+  comp-deletepvc-2:
+    executorLabel: exec-deletepvc-2
+    inputDefinitions:
+      parameters:
+        pvc_name:
+          description: Name of the PVC to delete. Supports passing a runtime-generated
+            name, such as a name provided by ``kubernetes.CreatePvcOp().outputs['name']``.
+          parameterType: STRING
+  comp-deletepvc-3:
+    executorLabel: exec-deletepvc-3
+    inputDefinitions:
+      parameters:
+        pvc_name:
+          description: Name of the PVC to delete. Supports passing a runtime-generated
+            name, such as a name provided by ``kubernetes.CreatePvcOp().outputs['name']``.
+          parameterType: STRING
+  comp-extract-tarball-to-pvc-op:
+    executorLabel: exec-extract-tarball-to-pvc-op
+    inputDefinitions:
+      artifacts:
+        tarball_location:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        pvc_path:
+          defaultValue: /data
+          isOptional: true
+          parameterType: STRING
+  comp-importer:
+    executorLabel: exec-importer
+    inputDefinitions:
+      parameters:
+        uri:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        artifact:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-importer-2:
+    executorLabel: exec-importer-2
+    inputDefinitions:
+      parameters:
+        uri:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        artifact:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+  comp-importer-3:
+    executorLabel: exec-importer-3
+    inputDefinitions:
+      parameters:
+        uri:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        artifact:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+  comp-knowledge-processed-data-to-artifact-op:
+    executorLabel: exec-knowledge-processed-data-to-artifact-op
+    inputDefinitions:
+      parameters:
+        pvc_path:
+          defaultValue: /data/knowledge
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        knowledge_processed_data:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-mock-op:
+    executorLabel: exec-mock-op
+  comp-mock-op-10:
+    executorLabel: exec-mock-op-10
+  comp-mock-op-11:
+    executorLabel: exec-mock-op-11
+  comp-mock-op-2:
+    executorLabel: exec-mock-op-2
+  comp-mock-op-3:
+    executorLabel: exec-mock-op-3
+  comp-mock-op-4:
+    executorLabel: exec-mock-op-4
+  comp-mock-op-5:
+    executorLabel: exec-mock-op-5
+  comp-mock-op-6:
+    executorLabel: exec-mock-op-6
+  comp-mock-op-7:
+    executorLabel: exec-mock-op-7
+  comp-mock-op-8:
+    executorLabel: exec-mock-op-8
+  comp-mock-op-9:
+    executorLabel: exec-mock-op-9
+  comp-model-to-pvc-op:
+    executorLabel: exec-model-to-pvc-op
+    inputDefinitions:
+      artifacts:
+        model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+      parameters:
+        pvc_path:
+          defaultValue: /model
+          isOptional: true
+          parameterType: STRING
+  comp-model-to-pvc-op-2:
+    executorLabel: exec-model-to-pvc-op-2
+    inputDefinitions:
+      artifacts:
+        model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+      parameters:
+        pvc_path:
+          defaultValue: /model
+          isOptional: true
+          parameterType: STRING
+  comp-skills-processed-data-to-artifact-op:
+    executorLabel: exec-skills-processed-data-to-artifact-op
+    inputDefinitions:
+      parameters:
+        pvc_path:
+          defaultValue: /data/skills
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        skills_processed_data:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-createpvc:
+      container:
+        image: argostub/createpvc
+    exec-createpvc-2:
+      container:
+        image: argostub/createpvc
+    exec-createpvc-3:
+      container:
+        image: argostub/createpvc
+    exec-data-processing-op:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - data_processing_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef data_processing_op(\n    model_path: str = \"/model\",\n    sdg_path:\
+          \ str = \"/data/sdg\",\n    skills_path: str = \"/data/skills\",\n    knowledge_path:\
+          \ str = \"/data/knowledge\",\n    max_seq_len: Optional[int] = 4096,\n \
+          \   max_batch_len: Optional[int] = 20000,\n):\n    import os\n\n    import\
+          \ instructlab.training.data_process as dp\n    from instructlab.training\
+          \ import (\n        DataProcessArgs,\n        TrainingArgs,\n    )\n\n \
+          \   # define training-specific arguments\n    skill_training_args = TrainingArgs(\n\
+          \        # define data-specific arguments\n        model_path=model_path,\n\
+          \        data_path=f\"{sdg_path}/skills_train_msgs*.jsonl\",\n        data_output_dir=skills_path,\n\
+          \        # define model-trianing parameters\n        max_seq_len=max_seq_len,\n\
+          \        max_batch_len=max_batch_len,\n        # XXX(shanand): We don't\
+          \ need the following arguments\n        # for data processing. Added them\
+          \ for now to avoid\n        # Pydantic validation errors for TrainingArgs\n\
+          \        ckpt_output_dir=\"data/saved_checkpoints\",\n        num_epochs=2,\n\
+          \        effective_batch_size=3840,\n        save_samples=0,\n        learning_rate=2e-6,\n\
+          \        warmup_steps=800,\n        is_padding_free=True,\n    )\n\n   \
+          \ knowledge_training_args = TrainingArgs(\n        # define data-specific\
+          \ arguments\n        model_path=model_path,\n        data_path=f\"{sdg_path}/knowledge_train_msgs*.jsonl\"\
+          ,\n        data_output_dir=knowledge_path,\n        # define model-trianing\
+          \ parameters\n        max_seq_len=max_seq_len,\n        max_batch_len=max_batch_len,\n\
+          \        # XXX(shanand): We don't need the following arguments\n       \
+          \ # for data processing. Added them for now to avoid\n        # Pydantic\
+          \ validation errors for TrainingArgs\n        ckpt_output_dir=\"data/saved_checkpoints\"\
+          ,\n        num_epochs=2,\n        effective_batch_size=3840,\n        save_samples=0,\n\
+          \        learning_rate=2e-6,\n        warmup_steps=800,\n        is_padding_free=True,\n\
+          \    )\n\n    def data_processing(train_args: TrainingArgs) -> None:\n \
+          \       # early validation logic here\n        if train_args.max_batch_len\
+          \ < train_args.max_seq_len:\n            raise ValueError(\n           \
+          \     f\"the 'max_batch_len' cannot be less than 'max_seq_len': {train_args.max_batch_len=}\
+          \ < {train_args.max_seq_len=}\"\n            )\n\n            # process\
+          \ the training data\n        if not os.path.exists(train_args.data_output_dir):\n\
+          \            os.makedirs(train_args.data_output_dir, exist_ok=True)\n  \
+          \      dp.main(\n            DataProcessArgs(\n                # XXX(osilkin):\
+          \ make a decision here, either:\n                #   1. the CLI is fully\
+          \ responsible for managing where the data is written\n                #\
+          \   2. we never cache it and simply write it to a tmp file every time.\n\
+          \                #\n                # An important reason for why #1 would\
+          \ be preferable is in the case of OpenShift/SELinux\n                # where\
+          \ the user has a defined place for new temporary data to be written.\n \
+          \               data_output_path=train_args.data_output_dir,\n         \
+          \       model_path=train_args.model_path,\n                data_path=train_args.data_path,\n\
+          \                max_seq_len=train_args.max_seq_len,\n                chat_tmpl_path=train_args.chat_tmpl_path,\n\
+          \            )\n        )\n\n    data_processing(train_args=skill_training_args)\n\
+          \    data_processing(train_args=knowledge_training_args)\n\n"
+        env:
+        - name: XDG_CACHE_HOME
+          value: /tmp
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-deletepvc:
+      container:
+        image: argostub/deletepvc
+    exec-deletepvc-2:
+      container:
+        image: argostub/deletepvc
+    exec-deletepvc-3:
+      container:
+        image: argostub/deletepvc
+    exec-extract-tarball-to-pvc-op:
+      container:
+        args:
+        - tb_filename=`basename {{$.inputs.artifacts['tarball_location'].path}}` &&
+          cp {{$.inputs.artifacts['tarball_location'].path}} {{$.inputs.parameters['pvc_path']}}/
+          && tar -xvzf {{$.inputs.parameters['pvc_path']}}/$tb_filename -C {{$.inputs.parameters['pvc_path']}}
+        command:
+        - /bin/sh
+        - -c
+        env:
+        - name: HOME
+          value: /tmp
+        - name: HF_HOME
+          value: /tmp
+        - name: SDG_CA_CERT_PATH
+          value: /tmp/cert/ca.crt
+        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+    exec-importer:
+      importer:
+        artifactUri:
+          runtimeParameter: uri
+        reimport: true
+        typeSchema:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+    exec-importer-2:
+      importer:
+        artifactUri:
+          runtimeParameter: uri
+        typeSchema:
+          schemaTitle: system.Model
+          schemaVersion: 0.0.1
+    exec-importer-3:
+      importer:
+        artifactUri:
+          runtimeParameter: uri
+        typeSchema:
+          schemaTitle: system.Model
+          schemaVersion: 0.0.1
+    exec-knowledge-processed-data-to-artifact-op:
+      container:
+        args:
+        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['knowledge_processed_data'].path}}
+        command:
+        - /bin/sh
+        - -c
+        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+    exec-mock-op:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        env:
+        - name: TAXONOMY_CA_CERT_PATH
+          value: /tmp/cert/taxonomy-ca.crt
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-10:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-11:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-3:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-4:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-5:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        env:
+        - name: HOME
+          value: /tmp
+        - name: HF_HOME
+          value: /tmp
+        - name: JUDGE_CA_CERT_PATH
+          value: /tmp/cert/ca.crt
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        resources:
+          accelerator:
+            count: '1'
+            type: nvidia.com/gpu
+    exec-mock-op-6:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        env:
+        - name: HOME
+          value: /tmp
+        - name: HF_HOME
+          value: /tmp
+        - name: JUDGE_CA_CERT_PATH
+          value: /tmp/cert/ca.crt
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        resources:
+          accelerator:
+            count: '1'
+            type: nvidia.com/gpu
+    exec-mock-op-7:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-8:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-9:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-model-to-pvc-op:
+      container:
+        args:
+        - cp -r {{$.inputs.artifacts['model'].path}}/* {{$.inputs.parameters['pvc_path']}}
+        command:
+        - /bin/sh
+        - -c
+        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+    exec-model-to-pvc-op-2:
+      container:
+        args:
+        - cp -r {{$.inputs.artifacts['model'].path}}/* {{$.inputs.parameters['pvc_path']}}
+        command:
+        - /bin/sh
+        - -c
+        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+    exec-skills-processed-data-to-artifact-op:
+      container:
+        args:
+        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['skills_processed_data'].path}}
+        command:
+        - /bin/sh
+        - -c
+        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+pipelineInfo:
+  description: InstructLab pipeline
+  displayName: InstructLab
+  name: instructlab
+root:
+  dag:
+    tasks:
+      createpvc:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-createpvc
+        inputs:
+          parameters:
+            access_modes:
+              runtimeValue:
+                constant:
+                - ReadWriteMany
+            pvc_name_suffix:
+              runtimeValue:
+                constant: -sdg
+            size:
+              runtimeValue:
+                constant: 10Gi
+            storage_class_name:
+              componentInputParameter: k8s_storage_class_name
+        taskInfo:
+          name: createpvc
+      createpvc-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-createpvc-2
+        inputs:
+          parameters:
+            access_modes:
+              runtimeValue:
+                constant:
+                - ReadWriteMany
+            pvc_name_suffix:
+              runtimeValue:
+                constant: -model-cache
+            size:
+              runtimeValue:
+                constant: 100Gi
+            storage_class_name:
+              componentInputParameter: k8s_storage_class_name
+        taskInfo:
+          name: createpvc-2
+      createpvc-3:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-createpvc-3
+        inputs:
+          parameters:
+            access_modes:
+              runtimeValue:
+                constant:
+                - ReadWriteMany
+            pvc_name_suffix:
+              runtimeValue:
+                constant: -output
+            size:
+              runtimeValue:
+                constant: 100Gi
+            storage_class_name:
+              componentInputParameter: k8s_storage_class_name
+        taskInfo:
+          name: createpvc-3
+      data-processing-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-data-processing-op
+        dependentTasks:
+        - createpvc
+        - createpvc-2
+        - extract-tarball-to-pvc-op
+        - model-to-pvc-op
+        inputs:
+          parameters:
+            max_batch_len:
+              componentInputParameter: sdg_max_batch_len
+        taskInfo:
+          name: data-processing-op
+      deletepvc:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-deletepvc
+        dependentTasks:
+        - createpvc
+        - mock-op-6
+        inputs:
+          parameters:
+            pvc_name:
+              taskOutputParameter:
+                outputParameterKey: name
+                producerTask: createpvc
+        taskInfo:
+          name: deletepvc
+      deletepvc-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-deletepvc-2
+        dependentTasks:
+        - createpvc-2
+        - mock-op-6
+        inputs:
+          parameters:
+            pvc_name:
+              taskOutputParameter:
+                outputParameterKey: name
+                producerTask: createpvc-2
+        taskInfo:
+          name: deletepvc-2
+      deletepvc-3:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-deletepvc-3
+        dependentTasks:
+        - createpvc-3
+        - mock-op-10
+        - mock-op-11
+        - mock-op-7
+        - mock-op-8
+        - mock-op-9
+        inputs:
+          parameters:
+            pvc_name:
+              taskOutputParameter:
+                outputParameterKey: name
+                producerTask: createpvc-3
+        taskInfo:
+          name: deletepvc-3
+      extract-tarball-to-pvc-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-extract-tarball-to-pvc-op
+        dependentTasks:
+        - createpvc
+        - importer
+        inputs:
+          artifacts:
+            tarball_location:
+              taskOutputArtifact:
+                outputArtifactKey: artifact
+                producerTask: importer
+        taskInfo:
+          name: extract-tarball-to-pvc-op
+      importer:
+        cachingOptions: {}
+        componentRef:
+          name: comp-importer
+        inputs:
+          parameters:
+            uri:
+              componentInputParameter: sdg_pregenerated_tarball
+        taskInfo:
+          name: importer
+      importer-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-importer-2
+        inputs:
+          parameters:
+            uri:
+              componentInputParameter: sdg_base_model
+        taskInfo:
+          name: importer-2
+      importer-3:
+        cachingOptions: {}
+        componentRef:
+          name: comp-importer-3
+        dependentTasks:
+        - createpvc-2
+        inputs:
+          parameters:
+            uri:
+              componentInputParameter: sdg_base_model
+        taskInfo:
+          name: importer-3
+      knowledge-processed-data-to-artifact-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-knowledge-processed-data-to-artifact-op
+        dependentTasks:
+        - createpvc
+        - data-processing-op
+        taskInfo:
+          name: knowledge-processed-data-to-artifact-op
+      mock-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op
+        dependentTasks:
+        - createpvc
+        taskInfo:
+          name: mock-op
+      mock-op-10:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-10
+        dependentTasks:
+        - createpvc-3
+        - mock-op-6
+        taskInfo:
+          name: mock-op-10
+      mock-op-11:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-11
+        dependentTasks:
+        - createpvc-3
+        - mock-op-6
+        taskInfo:
+          name: mock-op-11
+      mock-op-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-mock-op-2
+        dependentTasks:
+        - createpvc
+        - extract-tarball-to-pvc-op
+        - mock-op
+        taskInfo:
+          name: mock-op-2
+      mock-op-3:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-mock-op-3
+        dependentTasks:
+        - createpvc
+        - extract-tarball-to-pvc-op
+        - mock-op
+        taskInfo:
+          name: mock-op-3
+      mock-op-4:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-4
+        dependentTasks:
+        - createpvc-3
+        - model-to-pvc-op-2
+        taskInfo:
+          name: mock-op-4
+      mock-op-5:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-5
+        dependentTasks:
+        - createpvc-3
+        - mock-op-4
+        taskInfo:
+          name: mock-op-5
+      mock-op-6:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-6
+        dependentTasks:
+        - createpvc
+        - createpvc-2
+        - createpvc-3
+        - mock-op-5
+        taskInfo:
+          name: mock-op-6
+      mock-op-7:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-7
+        dependentTasks:
+        - createpvc-3
+        - mock-op-5
+        taskInfo:
+          name: mock-op-7
+      mock-op-8:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-8
+        dependentTasks:
+        - createpvc-3
+        - mock-op-5
+        taskInfo:
+          name: mock-op-8
+      mock-op-9:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-9
+        dependentTasks:
+        - createpvc-3
+        - mock-op-6
+        taskInfo:
+          name: mock-op-9
+      model-to-pvc-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-model-to-pvc-op
+        dependentTasks:
+        - createpvc-2
+        - importer-2
+        inputs:
+          artifacts:
+            model:
+              taskOutputArtifact:
+                outputArtifactKey: artifact
+                producerTask: importer-2
+        taskInfo:
+          name: model-to-pvc-op
+      model-to-pvc-op-2:
+        cachingOptions: {}
+        componentRef:
+          name: comp-model-to-pvc-op-2
+        dependentTasks:
+        - data-processing-op
+        - importer-2
+        - model-to-pvc-op
+        inputs:
+          artifacts:
+            model:
+              taskOutputArtifact:
+                outputArtifactKey: artifact
+                producerTask: importer-2
+        taskInfo:
+          name: model-to-pvc-op-2
+      skills-processed-data-to-artifact-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-skills-processed-data-to-artifact-op
+        dependentTasks:
+        - createpvc
+        - data-processing-op
+        taskInfo:
+          name: skills-processed-data-to-artifact-op
+  inputDefinitions:
+    parameters:
+      final_eval_batch_size:
+        defaultValue: auto
+        description: Final model evaluation parameter for MMLU. Batch size for evaluation.
+          Valid values are a positive integer or 'auto' to select the largest batch
+          size that will fit in memory.
+        isOptional: true
+        parameterType: STRING
+      final_eval_few_shots:
+        defaultValue: 5.0
+        description: Final model evaluation parameter for MMLU. Number of question-answer
+          pairs provided in the context preceding the question used for evaluation.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      final_eval_max_workers:
+        defaultValue: auto
+        description: Final model evaluation parameter for MT Bench Branch. Number
+          of workers to use for evaluation with mt_bench or mt_bench_branch. Must
+          be a positive integer or 'auto'.
+        isOptional: true
+        parameterType: STRING
+      final_eval_merge_system_user_message:
+        defaultValue: false
+        description: Final model evaluation parameter for MT Bench Branch. Boolean
+          indicating whether to merge system and user messages (required for Mistral
+          based judges)
+        isOptional: true
+        parameterType: BOOLEAN
+      k8s_storage_class_name:
+        defaultValue: standard
+        description: A Kubernetes StorageClass name for persistent volumes. Selected
+          StorageClass must support RWX PersistentVolumes.
+        isOptional: true
+        parameterType: STRING
+      mt_bench_max_workers:
+        defaultValue: auto
+        description: MT Bench parameter. Number of workers to use for evaluation with
+          mt_bench or mt_bench_branch. Must be a positive integer or 'auto'.
+        isOptional: true
+        parameterType: STRING
+      mt_bench_merge_system_user_message:
+        defaultValue: false
+        description: MT Bench parameter. Boolean indicating whether to merge system
+          and user messages (required for Mistral based judges)
+        isOptional: true
+        parameterType: BOOLEAN
+      sdg_base_model:
+        defaultValue: s3://<BUCKET>/<PATH_TO_MODEL>
+        description: SDG parameter. LLM model used to generate the synthetic dataset
+        isOptional: true
+        parameterType: STRING
+      sdg_max_batch_len:
+        defaultValue: 5000.0
+        description: SDG parameter. Maximum tokens per gpu for each batch that will
+          be handled in a single step.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      sdg_pipeline:
+        defaultValue: /usr/share/instructlab/sdg/pipelines/agentic
+        description: 'SDG parameter. Data generation pipeline to use. Available: ''simple'',
+          ''full'', or a valid path to a directory of pipeline workflow YAML files.
+          Note that ''full'' requires a larger teacher model, Mixtral-8x7b.'
+        isOptional: true
+        parameterType: STRING
+      sdg_pregenerated_tarball:
+        description: SDG parameter.  Reference to a tarball that contains pre-generated
+          SDG data (allows user to skip SDG step)
+        isOptional: true
+        parameterType: STRING
+      sdg_repo_branch:
+        description: SDG parameter. Points to a branch within the taxonomy git repository.
+          If set, has priority over sdg_repo_pr
+        isOptional: true
+        parameterType: STRING
+      sdg_repo_pr:
+        description: SDG parameter. Points to a pull request against the taxonomy
+          git repository
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      sdg_repo_url:
+        defaultValue: https://github.com/instructlab/taxonomy.git
+        description: SDG parameter. Points to a taxonomy git repository
+        isOptional: true
+        parameterType: STRING
+      sdg_sample_size:
+        defaultValue: 1.0
+        description: SDG parameter. Represents the sdg skills recipe sampling size
+          as percentage in decimal form.
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      sdg_scale_factor:
+        defaultValue: 30.0
+        description: SDG parameter. The total number of instructions to be generated.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_effective_batch_size_phase_1:
+        defaultValue: 128.0
+        description: Training parameter for in Phase 1. The number of samples in a
+          batch that the model should see before its parameters are updated.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_effective_batch_size_phase_2:
+        defaultValue: 3840.0
+        description: Training parameter for in Phase 2. The number of samples in a
+          batch that the model should see before its parameters are updated.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_learning_rate_phase_1:
+        defaultValue: 2.0e-05
+        description: Training parameter for in Phase 1. How fast we optimize the weights
+          during gradient descent. Higher values may lead to unstable learning performance.
+          It's generally recommended to have a low learning rate with a high effective
+          batch size.
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      train_learning_rate_phase_2:
+        defaultValue: 6.0e-06
+        description: Training parameter for in Phase 2. How fast we optimize the weights
+          during gradient descent. Higher values may lead to unstable learning performance.
+          It's generally recommended to have a low learning rate with a high effective
+          batch size.
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      train_max_batch_len:
+        defaultValue: 5000.0
+        description: Training parameter. Maximum tokens per gpu for each batch that
+          will be handled in a single step.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_nnodes:
+        defaultValue: 2.0
+        description: Training parameter. Number of nodes/workers to train on.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_nproc_per_node:
+        defaultValue: 2.0
+        description: Training parameter. Number of GPUs per each node/worker to use
+          for training.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_num_epochs_phase_1:
+        defaultValue: 7.0
+        description: Training parameter for in Phase 1. Number of epochs to run training.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_num_epochs_phase_2:
+        defaultValue: 10.0
+        description: Training parameter for in Phase 2. Number of epochs to run training.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_num_warmup_steps_phase_1:
+        defaultValue: 1000.0
+        description: Training parameter for in Phase 1. The number of steps a model
+          should go through before reaching the full learning rate. We start at 0
+          and linearly climb up to train_learning_rate.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_num_warmup_steps_phase_2:
+        defaultValue: 1000.0
+        description: Training parameter for in Phase 2. The number of steps a model
+          should go through before reaching the full learning rate. We start at 0
+          and linearly climb up to train_learning_rate.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_save_samples:
+        defaultValue: 250000.0
+        description: Training parameter. Number of samples the model should see before
+          saving a checkpoint.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      train_seed:
+        defaultValue: 42.0
+        description: Training parameter. Random seed for initializing training.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.9.0
+---
+platforms:
+  kubernetes:
+    deploymentSpec:
+      executors:
+        exec-data-processing-op:
+          pvcMount:
+          - mountPath: /model
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-2
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-extract-tarball-to-pvc-op:
+          configMapAsEnv:
+          - configMapName: teacher-server
+            keyToEnv:
+            - configMapKey: endpoint
+              envVar: endpoint
+            - configMapKey: model
+              envVar: model
+          configMapAsVolume:
+          - configMapName: teacher-server
+            mountPath: /tmp/cert
+            optional: false
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: api_key
+              secretKey: api_key
+            secretName: teacher-server
+        exec-knowledge-processed-data-to-artifact-op:
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-mock-op:
+          configMapAsVolume:
+          - configMapName: teacher-server
+            mountPath: /tmp/cert
+            optional: false
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-mock-op-10:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+        exec-mock-op-11:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+        exec-mock-op-2:
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-mock-op-3:
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-mock-op-4:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+        exec-mock-op-5:
+          configMapAsEnv:
+          - configMapName: judge-server
+            keyToEnv:
+            - configMapKey: endpoint
+              envVar: JUDGE_ENDPOINT
+            - configMapKey: model
+              envVar: JUDGE_NAME
+          configMapAsVolume:
+          - configMapName: judge-server
+            mountPath: /tmp/cert
+            optional: false
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: JUDGE_API_KEY
+              secretKey: api_key
+            secretName: judge-server
+        exec-mock-op-6:
+          configMapAsEnv:
+          - configMapName: judge-server
+            keyToEnv:
+            - configMapKey: endpoint
+              envVar: JUDGE_ENDPOINT
+            - configMapKey: model
+              envVar: JUDGE_NAME
+          configMapAsVolume:
+          - configMapName: judge-server
+            mountPath: /tmp/cert
+            optional: false
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+          - mountPath: /input
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+          - mountPath: /model
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-2
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: JUDGE_API_KEY
+              secretKey: api_key
+            secretName: judge-server
+        exec-mock-op-7:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+        exec-mock-op-8:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+        exec-mock-op-9:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+        exec-model-to-pvc-op:
+          pvcMount:
+          - mountPath: /model
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-2
+        exec-skills-processed-data-to-artifact-op:
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc

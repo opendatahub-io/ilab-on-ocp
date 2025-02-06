@@ -31,8 +31,6 @@
 #    train_num_warmup_steps_phase_2: int [Default: 1000.0]
 #    train_save_samples: int [Default: 250000.0]
 #    train_seed: int [Default: 42.0]
-# Outputs:
-#    generate-metrics-report-op-metrics: system.Metrics
 components:
   comp-createpvc:
     executorLabel: exec-createpvc
@@ -269,30 +267,33 @@ components:
           description: Name of the PVC to delete. Supports passing a runtime-generated
             name, such as a name provided by ``kubernetes.CreatePvcOp().outputs['name']``.
           parameterType: STRING
-  comp-generate-metrics-report-op:
-    executorLabel: exec-generate-metrics-report-op
-    outputDefinitions:
-      artifacts:
-        metrics:
-          artifactType:
-            schemaTitle: system.Metrics
-            schemaVersion: 0.0.1
-  comp-git-clone-op:
-    executorLabel: exec-git-clone-op
+  comp-extract-tarball-to-pvc-op:
+    executorLabel: exec-extract-tarball-to-pvc-op
     inputDefinitions:
+      artifacts:
+        tarball_location:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
       parameters:
-        repo_branch:
-          parameterType: STRING
-        repo_pr:
-          parameterType: NUMBER_INTEGER
-        repo_url:
-          parameterType: STRING
-        taxonomy_path:
-          defaultValue: /data/taxonomy
+        pvc_path:
+          defaultValue: /data
           isOptional: true
           parameterType: STRING
   comp-importer:
     executorLabel: exec-importer
+    inputDefinitions:
+      parameters:
+        uri:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        artifact:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-importer-2:
+    executorLabel: exec-importer-2
     inputDefinitions:
       parameters:
         uri:
@@ -317,6 +318,26 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
+  comp-mock-op:
+    executorLabel: exec-mock-op
+  comp-mock-op-10:
+    executorLabel: exec-mock-op-10
+  comp-mock-op-2:
+    executorLabel: exec-mock-op-2
+  comp-mock-op-3:
+    executorLabel: exec-mock-op-3
+  comp-mock-op-4:
+    executorLabel: exec-mock-op-4
+  comp-mock-op-5:
+    executorLabel: exec-mock-op-5
+  comp-mock-op-6:
+    executorLabel: exec-mock-op-6
+  comp-mock-op-7:
+    executorLabel: exec-mock-op-7
+  comp-mock-op-8:
+    executorLabel: exec-mock-op-8
+  comp-mock-op-9:
+    executorLabel: exec-mock-op-9
   comp-model-to-pvc-op:
     executorLabel: exec-model-to-pvc-op
     inputDefinitions:
@@ -330,54 +351,6 @@ components:
           defaultValue: /model
           isOptional: true
           parameterType: STRING
-  comp-pvc-to-mmlu-branch-op:
-    executorLabel: exec-pvc-to-mmlu-branch-op
-    inputDefinitions:
-      parameters:
-        pvc_path:
-          parameterType: STRING
-    outputDefinitions:
-      artifacts:
-        mmlu_branch_output:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
-  comp-pvc-to-model-op:
-    executorLabel: exec-pvc-to-model-op
-    inputDefinitions:
-      parameters:
-        pvc_path:
-          parameterType: STRING
-    outputDefinitions:
-      artifacts:
-        model:
-          artifactType:
-            schemaTitle: system.Model
-            schemaVersion: 0.0.1
-  comp-pvc-to-mt-bench-branch-op:
-    executorLabel: exec-pvc-to-mt-bench-branch-op
-    inputDefinitions:
-      parameters:
-        pvc_path:
-          parameterType: STRING
-    outputDefinitions:
-      artifacts:
-        mt_bench_branch_output:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
-  comp-pvc-to-mt-bench-op:
-    executorLabel: exec-pvc-to-mt-bench-op
-    inputDefinitions:
-      parameters:
-        pvc_path:
-          parameterType: STRING
-    outputDefinitions:
-      artifacts:
-        mt_bench_output:
-          artifactType:
-            schemaTitle: system.Artifact
-            schemaVersion: 0.0.1
   comp-pytorch-job-launcher-op:
     executorLabel: exec-pytorch-job-launcher-op
     inputDefinitions:
@@ -510,101 +483,6 @@ components:
           artifactType:
             schemaTitle: system.Artifact
             schemaVersion: 0.0.1
-  comp-run-final-eval-op:
-    executorLabel: exec-run-final-eval-op
-    inputDefinitions:
-      parameters:
-        base_branch:
-          parameterType: STRING
-        base_model_dir:
-          parameterType: STRING
-        batch_size:
-          parameterType: STRING
-        candidate_branch:
-          parameterType: STRING
-        candidate_model:
-          isOptional: true
-          parameterType: STRING
-        few_shots:
-          parameterType: NUMBER_INTEGER
-        max_workers:
-          parameterType: STRING
-        merge_system_user_message:
-          parameterType: BOOLEAN
-        mmlu_branch_output_path:
-          defaultValue: /output/mmlu_branch
-          isOptional: true
-          parameterType: STRING
-        mt_bench_branch_output_path:
-          defaultValue: /output/mt_bench_branch
-          isOptional: true
-          parameterType: STRING
-        sdg_path:
-          defaultValue: /input/sdg
-          isOptional: true
-          parameterType: STRING
-        taxonomy_path:
-          defaultValue: /input/taxonomy
-          isOptional: true
-          parameterType: STRING
-  comp-run-mt-bench-op:
-    executorLabel: exec-run-mt-bench-op
-    inputDefinitions:
-      parameters:
-        max_workers:
-          parameterType: STRING
-        merge_system_user_message:
-          parameterType: BOOLEAN
-        models_folder:
-          parameterType: STRING
-        output_path:
-          defaultValue: /output/mt_bench_data.json
-          isOptional: true
-          parameterType: STRING
-    outputDefinitions:
-      parameters:
-        best_model:
-          parameterType: STRING
-        best_score:
-          parameterType: NUMBER_DOUBLE
-  comp-sdg-op:
-    executorLabel: exec-sdg-op
-    inputDefinitions:
-      parameters:
-        num_instructions_to_generate:
-          parameterType: NUMBER_INTEGER
-        pipeline:
-          parameterType: STRING
-        repo_branch:
-          parameterType: STRING
-        repo_pr:
-          parameterType: NUMBER_INTEGER
-        sdg_path:
-          defaultValue: /data/sdg
-          isOptional: true
-          parameterType: STRING
-        sdg_sampling_size:
-          defaultValue: 1.0
-          isOptional: true
-          parameterType: NUMBER_DOUBLE
-        taxonomy_path:
-          defaultValue: /data/taxonomy
-          isOptional: true
-          parameterType: STRING
-  comp-sdg-to-artifact-op:
-    executorLabel: exec-sdg-to-artifact-op
-    inputDefinitions:
-      parameters:
-        pvc_path:
-          defaultValue: /data/sdg
-          isOptional: true
-          parameterType: STRING
-    outputDefinitions:
-      artifacts:
-        sdg:
-          artifactType:
-            schemaTitle: system.Dataset
-            schemaVersion: 0.0.1
   comp-skills-processed-data-to-artifact-op:
     executorLabel: exec-skills-processed-data-to-artifact-op
     inputDefinitions:
@@ -616,20 +494,6 @@ components:
     outputDefinitions:
       artifacts:
         skills_processed_data:
-          artifactType:
-            schemaTitle: system.Dataset
-            schemaVersion: 0.0.1
-  comp-taxonomy-to-artifact-op:
-    executorLabel: exec-taxonomy-to-artifact-op
-    inputDefinitions:
-      parameters:
-        pvc_path:
-          defaultValue: /data/taxonomy
-          isOptional: true
-          parameterType: STRING
-    outputDefinitions:
-      artifacts:
-        taxonomy:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
@@ -720,69 +584,32 @@ deploymentSpec:
     exec-deletepvc-3:
       container:
         image: argostub/deletepvc
-    exec-generate-metrics-report-op:
+    exec-extract-tarball-to-pvc-op:
       container:
         args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - generate_metrics_report_op
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef generate_metrics_report_op(\n    metrics: Output[Metrics],\n\
-          ):\n    import json\n\n    reports = {\n        \"mt_bench\": \"/output/mt_bench_data.json\"\
-          ,\n        \"mt_bench_branch\": \"/output/mt_bench_branch/mt_bench_branch_data.json\"\
-          ,\n        \"mmlu_branch\": \"/output/mmlu_branch/mmlu_branch_data.json\"\
-          ,\n    }\n\n    for report, file_name in reports.items():\n        with\
-          \ open(file_name, \"r\", encoding=\"utf-8\") as f:\n            report_data\
-          \ = json.load(f)\n\n        if report == \"mt_bench\":\n            metrics.log_metric(f\"\
-          {report}_best_model\", report_data[\"best_model\"])\n            metrics.log_metric(f\"\
-          {report}_best_score\", report_data[\"best_score\"])\n        else:\n   \
-          \         metrics.log_metric(\n                f\"{report}_trained_model_score\"\
-          , report_data[\"trained_model_score\"]\n            )\n            metrics.log_metric(\n\
-          \                f\"{report}_base_model_score\", report_data[\"base_model_score\"\
-          ]\n            )\n\n"
-        image: quay.io/modh/odh-generic-data-science-notebook@sha256:72c1d095adbda216a1f1b4b6935e3e2c717cbc58964009464ccd36c0b98312b2
-    exec-git-clone-op:
-      container:
-        args:
-        - "\n            # Increase logging verbosity\n            set -x &&\n\n \
-          \           # Add TLS Parameters if CA Cert exists and is non-zero size\n\
-          \            ADDITIONAL_CLONE_PARAMS=\"\"\n            if [ -s \"$TAXONOMY_CA_CERT_PATH\"\
-          \ ]; then\n                ADDITIONAL_CLONE_PARAMS=\"-c http.sslVerify=true\
-          \ -c http.sslCAInfo=$TAXONOMY_CA_CERT_PATH\"\n            fi\n\n       \
-          \     # Clone Taxonomy Repo\n            git clone $ADDITIONAL_CLONE_PARAMS\
-          \ {{$.inputs.parameters['repo_url']}} {{$.inputs.parameters['taxonomy_path']}}\
-          \ &&\n            cd {{$.inputs.parameters['taxonomy_path']}} &&\n\n   \
-          \         # Run additional configuration if TLS certs provided\n       \
-          \     if [ -s \"$TAXONOMY_CA_CERT_PATH\" ]; then\n                git config\
-          \ http.sslVerify true &&\n                git config http.sslCAInfo $TAXONOMY_CA_CERT_PATH\n\
-          \            fi &&\n\n            # Checkout and use taxonomy repo branch\
-          \ or PR if specified\n            if [ -n \"{{$.inputs.parameters['repo_branch']}}\"\
-          \ ]; then\n                git fetch origin {{$.inputs.parameters['repo_branch']}}\
-          \ && git checkout {{$.inputs.parameters['repo_branch']}};\n            elif\
-          \ [ -n \"{{$.inputs.parameters['repo_pr']}}\" ] && [ {{$.inputs.parameters['repo_pr']}}\
-          \ -gt 0 ]; then\n                git fetch origin pull/{{$.inputs.parameters['repo_pr']}}/head:{{$.inputs.parameters['repo_pr']}}\
-          \ && git checkout {{$.inputs.parameters['repo_pr']}};\n            fi\n\
-          \            "
+        - tb_filename=`basename {{$.inputs.artifacts['tarball_location'].path}}` &&
+          cp {{$.inputs.artifacts['tarball_location'].path}} {{$.inputs.parameters['pvc_path']}}/
+          && tar -xvzf {{$.inputs.parameters['pvc_path']}}/$tb_filename -C {{$.inputs.parameters['pvc_path']}}
         command:
         - /bin/sh
         - -c
         env:
-        - name: TAXONOMY_CA_CERT_PATH
-          value: /tmp/cert/taxonomy-ca.crt
+        - name: HOME
+          value: /tmp
+        - name: HF_HOME
+          value: /tmp
+        - name: SDG_CA_CERT_PATH
+          value: /tmp/cert/ca.crt
         image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
     exec-importer:
+      importer:
+        artifactUri:
+          runtimeParameter: uri
+        reimport: true
+        typeSchema:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+    exec-importer-2:
       importer:
         artifactUri:
           runtimeParameter: uri
@@ -797,42 +624,245 @@ deploymentSpec:
         - /bin/sh
         - -c
         image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+    exec-mock-op:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        env:
+        - name: TAXONOMY_CA_CERT_PATH
+          value: /tmp/cert/taxonomy-ca.crt
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-10:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-3:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-4:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        env:
+        - name: HOME
+          value: /tmp
+        - name: HF_HOME
+          value: /tmp
+        - name: JUDGE_CA_CERT_PATH
+          value: /tmp/cert/ca.crt
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        resources:
+          accelerator:
+            count: '1'
+            type: nvidia.com/gpu
+    exec-mock-op-5:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        env:
+        - name: HOME
+          value: /tmp
+        - name: HF_HOME
+          value: /tmp
+        - name: JUDGE_CA_CERT_PATH
+          value: /tmp/cert/ca.crt
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        resources:
+          accelerator:
+            count: '1'
+            type: nvidia.com/gpu
+    exec-mock-op-6:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-7:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-8:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+    exec-mock-op-9:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - mock_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef mock_op():\n    pass\n\n"
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
     exec-model-to-pvc-op:
       container:
         args:
         - cp -r {{$.inputs.artifacts['model'].path}}/* {{$.inputs.parameters['pvc_path']}}
-        command:
-        - /bin/sh
-        - -c
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
-    exec-pvc-to-mmlu-branch-op:
-      container:
-        args:
-        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['mmlu_branch_output'].path}}
-        command:
-        - /bin/sh
-        - -c
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
-    exec-pvc-to-model-op:
-      container:
-        args:
-        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['model'].path}}
-        command:
-        - /bin/sh
-        - -c
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
-    exec-pvc-to-mt-bench-branch-op:
-      container:
-        args:
-        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['mt_bench_branch_output'].path}}
-        command:
-        - /bin/sh
-        - -c
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
-    exec-pvc-to-mt-bench-op:
-      container:
-        args:
-        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['mt_bench_output'].path}}
         command:
         - /bin/sh
         - -c
@@ -1097,531 +1127,10 @@ deploymentSpec:
           Deleting job after completion.\")\n        training_client.delete_job(name,\
           \ namespace)\n\n"
         image: quay.io/modh/odh-generic-data-science-notebook@sha256:72c1d095adbda216a1f1b4b6935e3e2c717cbc58964009464ccd36c0b98312b2
-    exec-run-final-eval-op:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - run_final_eval_op
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef run_final_eval_op(\n    base_model_dir: str,\n    base_branch:\
-          \ str,\n    candidate_branch: str,\n    max_workers: str,\n    few_shots:\
-          \ int,\n    batch_size: str,\n    merge_system_user_message: bool,\n   \
-          \ candidate_model: str = None,\n    taxonomy_path: str = \"/input/taxonomy\"\
-          ,\n    sdg_path: str = \"/input/sdg\",\n    mmlu_branch_output_path: str\
-          \ = \"/output/mmlu_branch\",\n    mt_bench_branch_output_path: str = \"\
-          /output/mt_bench_branch\",\n):\n    import json\n    import os\n    import\
-          \ subprocess\n    from pathlib import Path\n\n    import httpx\n    import\
-          \ torch\n    from instructlab.eval.mmlu import MMLUBranchEvaluator\n   \
-          \ from instructlab.eval.mt_bench import MTBenchBranchEvaluator\n    from\
-          \ instructlab.model.evaluate import qa_pairs_to_qna_to_avg_scores, sort_score\n\
-          \n    judge_api_key = os.getenv(\"JUDGE_API_KEY\", \"\")\n    judge_model_name\
-          \ = os.getenv(\"JUDGE_NAME\")\n    judge_endpoint = os.getenv(\"JUDGE_ENDPOINT\"\
-          )\n    judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls\
-          \ = os.path.exists(judge_ca_cert_path) and (\n        os.path.getsize(judge_ca_cert_path)\
-          \ > 0\n    )\n    judge_http_client = httpx.Client(verify=judge_ca_cert_path)\
-          \ if use_tls else None\n\n    print(\"Starting Final Eval...\")\n\n    def\
-          \ launch_vllm(\n        model_path: str, gpu_count: int, retries: int =\
-          \ 120, delay: int = 10\n    ) -> tuple:\n        import subprocess\n   \
-          \     import sys\n        import time\n\n        import requests\n     \
-          \   from instructlab.model.backends.common import free_tcp_ipv4_port\n\n\
-          \        free_port = free_tcp_ipv4_port(\"127.0.0.1\")\n        port = str(free_port)\n\
-          \        vllm_server = f\"http://127.0.0.1:{port}/v1\"\n\n        command\
-          \ = [\n            sys.executable,\n            \"-m\",\n            \"\
-          vllm.entrypoints.openai.api_server\",\n            \"--port\",\n       \
-          \     port,\n            \"--model\",\n            model_path,\n       \
-          \ ]\n        if gpu_count > 0:\n            command += [\n             \
-          \   \"--tensor-parallel-size\",\n                str(gpu_count),\n     \
-          \       ]\n\n        process = subprocess.Popen(args=command)\n\n      \
-          \  print(f\"Waiting for vLLM server to start at {vllm_server}...\")\n\n\
-          \        for attempt in range(retries):\n            try:\n            \
-          \    response = requests.get(f\"{vllm_server}/models\", timeout=10)\n  \
-          \              if response.status_code == 200:\n                    print(f\"\
-          vLLM server is up and running at {vllm_server}.\")\n                   \
-          \ return process, vllm_server\n            except requests.ConnectionError:\n\
-          \                pass\n\n            print(\n                f\"Server not\
-          \ available yet, retrying in {delay} seconds (Attempt {attempt + 1}/{retries})...\"\
-          \n            )\n            time.sleep(delay)\n\n        raise RuntimeError(\n\
-          \            f\"Failed to start vLLM server at {vllm_server} after {retries}\
-          \ retries.\"\n        )\n\n    def shutdown_vllm(process: subprocess.Popen,\
-          \ timeout: int = 20):\n        import subprocess\n\n        from instructlab.model.backends.vllm\
-          \ import wait_for_stable_vram\n\n        try:\n            process.terminate()\n\
-          \            process.wait(timeout=timeout)\n\n            if process.poll()\
-          \ is None:\n                print(f\"Forcefully killing vLLM server process\
-          \ with PID: {process.pid}\")\n                process.kill()\n\n       \
-          \     print(f\"Successfully stopped vLLM server with PID: {process.pid}\"\
-          )\n\n        except subprocess.TimeoutExpired:\n            print(\n   \
-          \             f\"Timeout expired. Forcefully killing vLLM server with PID:\
-          \ {process.pid}\"\n            )\n            process.kill()  # Force kill\
-          \ the process if over timeout\n\n        # Note from instructlab/model/backends/vllm.py\n\
-          \        # vLLM relies on stable VRAM,  residual reclamation activity\n\
-          \        # can lead to crashes on restart. To prevent this add a\n     \
-          \   # short delay (typically ~ 10 seconds, max 30) to verify stability.\n\
-          \        wait_for_stable_vram(30)\n\n    # For standalone mode\n    if candidate_model\
-          \ is None:\n        # logic to get the best model from the models folder\
-          \ and results\n        pass\n\n    ######################################################################\n\
-          \    # branch_eval_summary_to_json creates a json object from output of\
-          \ instructlab/eval\n    # TODO: Add this to the instructlab/eval or instructlab/instructlab\
-          \ repository\n    def branch_eval_summary_to_json(\n        improvements:\
-          \ list[tuple[str, float, float, float]],\n        regressions: list[tuple[str,\
-          \ float, float, float]],\n        no_changes: list[tuple[str, float]],\n\
-          \        new=None,\n    ) -> str:\n        # Generates a JSON object from\
-          \ the _branch benchmark evaluations\n\n        import json\n\n        summary\
-          \ = {\"improvements\": [], \"regressions\": [], \"no_changes\": [], \"new\"\
-          : []}\n\n        if len(improvements) > 0:\n            improvements.sort(key=sort_score,\
-          \ reverse=True)\n            for improvement in improvements:\n        \
-          \        task, delta, base_score, new_score = improvement\n            \
-          \    summary[\"improvements\"].append(\n                    {\n        \
-          \                \"task\": task,\n                        \"base_score\"\
-          : round(base_score, 2),\n                        \"new_score\": round(new_score,\
-          \ 2),\n                        \"delta\": delta,\n                    }\n\
-          \                )\n\n        if len(regressions) > 0:\n            regressions.sort(key=sort_score)\n\
-          \            for regression in regressions:\n                task, delta,\
-          \ base_score, new_score = regression\n                summary[\"regressions\"\
-          ].append(\n                    {\n                        \"task\": task,\n\
-          \                        \"base_score\": round(base_score, 2),\n       \
-          \                 \"new_score\": round(new_score, 2),\n                \
-          \        \"delta\": delta,\n                    }\n                )\n\n\
-          \        if len(no_changes) > 0:\n            for entry in no_changes:\n\
-          \                task, avg_score = entry\n                summary[\"no_changes\"\
-          ].append(\n                    {\"task\": task, \"average_score\": round(avg_score,\
-          \ 2)}\n                )\n\n        if new is not None and len(new) > 0:\n\
-          \            for entry in new:\n                _, avg_score = entry\n \
-          \               summary[\"new\"].append(\n                    {\"qna\":\
-          \ qna, \"average_score\": round(avg_score, 2)}\n                )\n\n  \
-          \      return json.dumps(summary, indent=4)\n\n    ######################################################################\n\
-          \    print(\"Checking GPUs...\")\n    gpu_available = torch.cuda.is_available()\n\
-          \    gpu_name = (\n        torch.cuda.get_device_name(torch.cuda.current_device())\n\
-          \        if gpu_available\n        else \"No GPU available\"\n    )\n  \
-          \  gpu_count = torch.cuda.device_count() if gpu_available else 0\n\n   \
-          \ print(f\"GPU Available: {gpu_available}, Using: {gpu_name}\")\n\n    if\
-          \ batch_size.isdigit():\n        batch_size = int(batch_size)\n\n    # MMLU_BRANCH\n\
-          \n    # This is very specific to 'ilab generate', necessary because the\
-          \ data generation and\n    # model evaluation are taking place in separate\
-          \ environments.\n    def update_test_lines_in_files(base_dir):\n       \
-          \ import os\n\n        import yaml\n\n        for root, _, files in os.walk(base_dir):\n\
-          \            for file_name in files:\n                if file_name.startswith(\"\
-          knowledge_\") and file_name.endswith(\n                    \"_task.yaml\"\
-          \n                ):\n                    file_path = os.path.join(root,\
-          \ file_name)\n\n                    with open(file_path, \"r\", encoding=\"\
-          utf-8\") as file:\n                        task_yaml = yaml.load(file, Loader=yaml.Loader)\n\
-          \n                    current_test_file_path = task_yaml[\"dataset_kwargs\"\
-          ][\"data_files\"][\n                        \"test\"\n                 \
-          \   ]\n                    current_test_file_path_parts = current_test_file_path.split(\"\
-          /\")\n                    new_test_file_path = f\"{root}/{current_test_file_path_parts[-1]}\"\
-          \n                    task_yaml[\"dataset_kwargs\"][\"data_files\"][\"test\"\
-          ] = (\n                        new_test_file_path\n                    )\n\
-          \                    with open(file_path, \"w\", encoding=\"utf-8\") as\
-          \ file:\n                        yaml.dump(task_yaml, file)\n\n    # find_node_dataset_directories\
-          \ to find sdg output node_datasets_*\n    def find_node_dataset_directories(base_dir:\
-          \ str):\n        import os\n        import re\n\n        # This is specific\
-          \ to ilab/eval output\n        pattern = r\"node_datasets_\"\n        matching_dirs\
-          \ = []\n        regex = re.compile(pattern)\n\n        for root, dirs, _\
-          \ in os.walk(base_dir):\n            for directory in dirs:\n          \
-          \      if regex.search(directory):\n                    matching_dirs.append(os.path.join(root,\
-          \ directory))\n\n        # From 'ilab sdg' the knowledge_*_task.yaml files\
-          \ have a line that references where the SDG took place.\n        # This\
-          \ needs to be updated to run elsewhere.\n        # The line is:\n      \
-          \  #    test: /path/to/where/sdg/occured/node_datasets_*\n        # TODO:\
-          \ update sdg repo: https://github.com/instructlab/sdg/blob/366814b3e89e28c98c0d2a276ad0759c567d2798/src/instructlab/sdg/eval_data.py#L84-%23L114\n\
-          \        update_test_lines_in_files(base_dir)\n        return matching_dirs\n\
-          \n    print(\"Starting MMLU_Branch...\")\n\n    mmlu_tasks = [\"mmlu_pr\"\
-          ]\n\n    node_dataset_dirs = find_node_dataset_directories(sdg_path)\n\n\
-          \    # This assumes generated filesystem from ilab sdg, which\n    # generates\
-          \ a node_datasets_ directory for MMLU custom tasks data\n    if node_dataset_dirs:\n\
-          \        tasks_dir = node_dataset_dirs[0]\n\n        mmlu_branch_evaluators\
-          \ = [\n            MMLUBranchEvaluator(\n                model_path=candidate_model,\n\
-          \                tasks_dir=tasks_dir,\n                tasks=mmlu_tasks,\n\
-          \                few_shots=few_shots,\n                batch_size=batch_size,\n\
-          \            ),\n            MMLUBranchEvaluator(\n                model_path=base_model_dir,\n\
-          \                tasks_dir=tasks_dir,\n                tasks=mmlu_tasks,\n\
-          \                few_shots=few_shots,\n                batch_size=batch_size,\n\
-          \            ),\n        ]\n        m_paths = [candidate_model, base_model_dir]\n\
-          \        overall_scores = []\n        individual_scores_list = []\n    \
-          \    for i, evaluator in enumerate(mmlu_branch_evaluators):\n          \
-          \  m_path = m_paths[i]\n            print(\"Launching Vllm...\")\n     \
-          \       vllm_process, vllm_server = launch_vllm(m_path, gpu_count)\n   \
-          \         overall_score, individual_scores = evaluator.run(vllm_server)\n\
-          \            overall_scores.append(overall_score)\n            individual_scores_list.append(individual_scores)\n\
-          \            print(\"Stopping Vllm\")\n            shutdown_vllm(vllm_process)\n\
-          \n        # TODO: update instructlab/instructlab model/evaluate.py\n   \
-          \     # so this logic can be imported outside of the CLI\n        overall_score\
-          \ = overall_scores[0]\n        base_overall_score = overall_scores[1]\n\
-          \        individual_scores = individual_scores_list[0]\n        base_individual_scores\
-          \ = individual_scores_list[1]\n\n        improvements, regressions, no_changes\
-          \ = [], [], []\n        for task, score in individual_scores.items():\n\
-          \            base_score = base_individual_scores[task]\n            s =\
-          \ score[\"score\"]\n            b_s = base_score[\"score\"]\n          \
-          \  d = round(s - b_s, 2)\n            if s > b_s:\n                improvements.append((task,\
-          \ d, b_s, s))\n            elif b_s > s:\n                regressions.append((task,\
-          \ d, b_s, s))\n            else:\n                no_changes.append((task,\
-          \ s))\n\n        summary = branch_eval_summary_to_json(\n            improvements,\n\
-          \            regressions,\n            no_changes,\n        )\n\n      \
-          \  mmlu_branch_data = {\n            \"report_title\": \"KNOWLEDGE EVALUATION\
-          \ REPORT\",\n            \"max_score\": \"1.0\",\n            \"model\"\
-          : candidate_model,\n            \"trained_model_score\": round(overall_score,\
-          \ 2),\n            \"base_model\": base_model_dir,\n            \"base_model_score\"\
-          : round(base_overall_score, 2),\n            \"summary\": summary,\n   \
-          \     }\n\n        if not os.path.exists(mmlu_branch_output_path):\n   \
-          \         os.makedirs(mmlu_branch_output_path)\n        mmlu_branch_output_file\
-          \ = (\n            Path(mmlu_branch_output_path) / \"mmlu_branch_data.json\"\
-          \n        )\n        with open(mmlu_branch_output_file, \"w\", encoding=\"\
-          utf-8\") as f:\n            json.dump(mmlu_branch_data, f, indent=4)\n \
-          \   else:\n        print(\"No MMLU tasks directories found, skipping MMLU_branch\
-          \ evaluation.\")\n\n    # MT_BENCH_BRANCH\n\n    print(\"Starting MT_BENCH_BRANCH\
-          \ ...\")\n\n    judge_api_key = os.getenv(\"JUDGE_API_KEY\", \"\")\n   \
-          \ judge_model_name = os.getenv(\"JUDGE_NAME\")\n    judge_endpoint = os.getenv(\"\
-          JUDGE_ENDPOINT\")\n\n    output_dir = \"/tmp/eval_output\"\n\n    # TODO:\
-          \ candidate_branch must be in same repo, not a fork, or, can compare main\
-          \ branch against candidate, base models\n    base_branch = base_branch or\
-          \ \"main\"\n    candidate_branch = candidate_branch or \"main\"\n\n    ######################################################################\n\
-          \    # TODO: Update ilab/model/evaluate evaluate def logic to allow for\
-          \ external judge model\n    # and when that happens, much of this logic\
-          \ can be imported from the 'evaluate' definition:\n    # https://github.com/instructlab/instructlab/blob/83ca501ecdd858677380046e2a56da5b2f3f14e7/src/instructlab/model/evaluate.py#L504\n\
-          \    #\n    # With instructlab, model_name is synonomous with model_path\n\
-          \    mt_bench_evaluators = [\n        MTBenchBranchEvaluator(\n        \
-          \    model_name=candidate_model,\n            judge_model_name=judge_model_name,\n\
-          \            taxonomy_git_repo_path=taxonomy_path,\n            branch=candidate_branch,\n\
-          \            output_dir=output_dir,\n            merge_system_user_message=merge_system_user_message,\n\
-          \        ),\n        MTBenchBranchEvaluator(\n            model_name=base_model_dir,\n\
-          \            judge_model_name=judge_model_name,\n            taxonomy_git_repo_path=taxonomy_path,\n\
-          \            branch=base_branch,\n            output_dir=output_dir,\n \
-          \           merge_system_user_message=merge_system_user_message,\n     \
-          \   ),\n    ]\n\n    # ilab/evaluate uses a magic word for its mt_bench\
-          \ evaluator  - 'auto'\n    # with 'auto', number of gpus allocated for serving\
-          \ is calculated based on environment\n    # https://github.com/instructlab/eval/blob/main/src/instructlab/eval/mt_bench.py#L36\n\
-          \    if max_workers == \"auto\":\n        try:\n            usable_cpu_count\
-          \ = len(os.sched_getaffinity(0)) // 2\n        except AttributeError:\n\
-          \            import multiprocessing\n\n            usable_cpu_count = multiprocessing.cpu_count()\
-          \ // 2\n        max_workers = usable_cpu_count\n\n    branches = [candidate_branch,\
-          \ base_branch]\n    m_paths = [candidate_model, base_model_dir]\n    qa_pairs_and_errors\
-          \ = []\n    for i, evaluator in enumerate(mt_bench_evaluators):\n      \
-          \  branch = branches[i]\n        m_path = m_paths[i]\n\n        print(\n\
-          \            f\"Generating questions and reference answers from qna files\
-          \ for branch {branch}...\"\n        )\n        vllm_process, vllm_server\
-          \ = launch_vllm(m_path, gpu_count)\n\n        evaluator.gen_answers(\n \
-          \           server_url=vllm_server,\n            serving_gpus=gpu_count,\n\
-          \            max_workers=max_workers,\n            http_client=judge_http_client,\n\
-          \        )\n\n        shutdown_vllm(vllm_process)\n\n        print(f\"Evaluating\
-          \ answers for branch {branch}...\")\n        overall_score, qa_pairs, error_rate\
-          \ = evaluator.judge_answers(\n            server_url=judge_endpoint,\n \
-          \           api_key=judge_api_key,\n            serving_gpus=gpu_count,\n\
-          \            max_workers=max_workers,\n            http_client=judge_http_client,\n\
-          \        )\n\n        qa_pairs_and_errors.append((overall_score, qa_pairs,\
-          \ error_rate))\n\n    overall_score, qa_pairs, error_rate = qa_pairs_and_errors[0]\n\
-          \    base_overall_score, base_qa_pairs, base_error_rate = qa_pairs_and_errors[1]\n\
-          \n    qna_to_avg_scores = qa_pairs_to_qna_to_avg_scores(qa_pairs)\n    base_qna_to_avg_scores\
-          \ = qa_pairs_to_qna_to_avg_scores(base_qa_pairs)\n\n    improvements, regressions,\
-          \ no_changes, new_qnas = [], [], [], []\n\n    for qna, avg_score in qna_to_avg_scores.items():\n\
-          \        base_avg_score = base_qna_to_avg_scores.get(qna)\n        if base_avg_score\
-          \ is not None:\n            if avg_score > base_avg_score:\n           \
-          \     improvements.append(\n                    (\n                    \
-          \    qna,\n                        round(avg_score - base_avg_score, 2),\n\
-          \                        base_avg_score,\n                        avg_score,\n\
-          \                    )\n                )\n            elif avg_score ==\
-          \ base_avg_score:\n                no_changes.append((qna, avg_score))\n\
-          \            else:\n                regressions.append(\n              \
-          \      (\n                        qna,\n                        round(avg_score\
-          \ - base_avg_score, 2),\n                        base_avg_score,\n     \
-          \                   avg_score,\n                    )\n                )\n\
-          \        else:\n            new_qnas.append((qna, avg_score))\n\n    error_rate\
-          \ = (error_rate + base_error_rate) / 2\n    if error_rate > 0:\n       \
-          \ error_rate = round(error_rate, 2)\n\n    summary = branch_eval_summary_to_json(\n\
-          \        improvements,\n        regressions,\n        no_changes,\n    \
-          \    new_qnas,\n    )\n\n    mt_bench_branch_data = {\n        \"report_title\"\
-          : \"SKILLS EVALUATION REPORT\",\n        \"model\": candidate_model,\n \
-          \       \"judge_model\": judge_model_name,\n        \"max_score\": \"10.0\"\
-          ,\n        \"trained_model_score\": overall_score,\n        \"base_model_score\"\
-          : base_overall_score,\n        \"error_rate\": error_rate,\n        \"summary\"\
-          : summary,\n    }\n\n    if not os.path.exists(mt_bench_branch_output_path):\n\
-          \        os.makedirs(mt_bench_branch_output_path)\n    mt_bench_branch_data_file\
-          \ = (\n        Path(mt_bench_branch_output_path) / \"mt_bench_branch_data.json\"\
-          \n    )\n    with open(\n        mt_bench_branch_data_file,\n        \"\
-          w\",\n        encoding=\"utf-8\",\n    ) as f:\n        json.dump(mt_bench_branch_data,\
-          \ f, indent=4)\n\n"
-        env:
-        - name: HOME
-          value: /tmp
-        - name: HF_HOME
-          value: /tmp
-        - name: JUDGE_CA_CERT_PATH
-          value: /tmp/cert/ca.crt
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
-        resources:
-          accelerator:
-            count: '1'
-            type: nvidia.com/gpu
-    exec-run-mt-bench-op:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - run_mt_bench_op
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef run_mt_bench_op(\n    merge_system_user_message: bool,\n    #\
-          \ generate_answers,judgment uses a magic word for its mt_bench evaluator\
-          \  - 'auto'\n    # with 'auto', number of gpus allocated for serving is\
-          \ calculated based on environment\n    # https://github.com/instructlab/eval/blob/main/src/instructlab/eval/mt_bench.py#L36\n\
-          \    max_workers: str,\n    models_folder: str,\n    output_path: str =\
-          \ \"/output/mt_bench_data.json\",\n) -> NamedTuple(\"outputs\", best_model=str,\
-          \ best_score=float):\n    import json\n    import os\n    import subprocess\n\
-          \n    import httpx\n    import torch\n    from instructlab.eval.mt_bench\
-          \ import MTBenchEvaluator\n\n    judge_api_key = os.getenv(\"JUDGE_API_KEY\"\
-          , \"\")\n    judge_model_name = os.getenv(\"JUDGE_NAME\")\n    judge_endpoint\
-          \ = os.getenv(\"JUDGE_ENDPOINT\")\n    judge_ca_cert_path = os.getenv(\"\
-          JUDGE_CA_CERT_PATH\")\n    use_tls = os.path.exists(judge_ca_cert_path)\
-          \ and (\n        os.path.getsize(judge_ca_cert_path) > 0\n    )\n    judge_http_client\
-          \ = httpx.Client(verify=judge_ca_cert_path) if use_tls else None\n\n   \
-          \ def launch_vllm(\n        model_path: str, gpu_count: int, retries: int\
-          \ = 120, delay: int = 10\n    ) -> tuple:\n        import subprocess\n \
-          \       import sys\n        import time\n\n        import requests\n   \
-          \     from instructlab.model.backends.common import free_tcp_ipv4_port\n\
-          \n        free_port = free_tcp_ipv4_port(\"127.0.0.1\")\n        port =\
-          \ str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\n\
-          \n        command = [\n            sys.executable,\n            \"-m\",\n\
-          \            \"vllm.entrypoints.openai.api_server\",\n            \"--port\"\
-          ,\n            port,\n            \"--model\",\n            model_path,\n\
-          \        ]\n        if gpu_count > 0:\n            command += [\n      \
-          \          \"--tensor-parallel-size\",\n                str(gpu_count),\n\
-          \            ]\n\n        process = subprocess.Popen(args=command)\n\n \
-          \       print(f\"Waiting for vLLM server to start at {vllm_server}...\"\
-          )\n\n        for attempt in range(retries):\n            try:\n        \
-          \        response = requests.get(f\"{vllm_server}/models\")\n          \
-          \      if response.status_code == 200:\n                    print(f\"vLLM\
-          \ server is up and running at {vllm_server}.\")\n                    return\
-          \ process, vllm_server\n            except requests.ConnectionError:\n \
-          \               pass\n\n            print(\n                f\"Server not\
-          \ available yet, retrying in {delay} seconds (Attempt {attempt + 1}/{retries})...\"\
-          \n            )\n            time.sleep(delay)\n\n        raise RuntimeError(\n\
-          \            f\"Failed to start vLLM server at {vllm_server} after {retries}\
-          \ retries.\"\n        )\n\n    def shutdown_vllm(process: subprocess.Popen,\
-          \ timeout: int = 20):\n        import subprocess\n\n        from instructlab.model.backends.vllm\
-          \ import wait_for_stable_vram\n\n        try:\n            process.terminate()\n\
-          \            process.wait(timeout=timeout)\n\n            if process.poll()\
-          \ is None:\n                print(f\"Forcefully killing vLLM server process\
-          \ with PID: {process.pid}\")\n                process.kill()\n\n       \
-          \     print(f\"Successfully stopped vLLM server with PID: {process.pid}\"\
-          )\n\n        except subprocess.TimeoutExpired:\n            print(\n   \
-          \             f\"Timeout expired. Forcefully killing vLLM server with PID:\
-          \ {process.pid}\"\n            )\n            process.kill()  # Force kill\
-          \ the process if over timeout\n        except Exception as e:\n        \
-          \    print(f\"Failed to stop process with PID {process.pid}. Error: {e}\"\
-          )\n        # Note from instructlab/model/backends/vllm.py\n        # vLLM\
-          \ relies on stable VRAM,  residual reclamation activity\n        # can lead\
-          \ to crashes on restart. To prevent this add a\n        # short delay (typically\
-          \ ~ 10 seconds, max 30) to verify stability.\n        wait_for_stable_vram(30)\n\
-          \n    gpu_available = torch.cuda.is_available()\n    gpu_name = (\n    \
-          \    torch.cuda.get_device_name(torch.cuda.current_device())\n        if\
-          \ gpu_available\n        else \"No GPU available\"\n    )\n    gpu_count\
-          \ = torch.cuda.device_count() if gpu_available else 0\n\n    print(f\"GPU\
-          \ Available: {gpu_available}, {gpu_name}\")\n\n    models_list = os.listdir(models_folder)\n\
-          \n    scores = {}\n    all_mt_bench_data = []\n\n    # generate_answers,judgment\
-          \ uses a magic word for its mt_bench evaluator  - 'auto'\n    # with 'auto',\
-          \ number of gpus allocated for serving is calculated based on environment\n\
-          \    # https://github.com/instructlab/eval/blob/main/src/instructlab/eval/mt_bench.py#L36\n\
-          \    if max_workers == \"auto\":\n        try:\n            usable_cpu_count\
-          \ = len(os.sched_getaffinity(0)) // 2\n        except AttributeError:\n\
-          \            import multiprocessing\n\n            usable_cpu_count = multiprocessing.cpu_count()\
-          \ // 2\n        max_workers = usable_cpu_count\n\n    # modify model_list\
-          \ to ignore any jsonl files present in the directory\n    models_list =\
-          \ [model for model in models_list if not model.endswith(\".jsonl\")]\n \
-          \   for model_name in models_list:\n        print(f\"Serving candidate model:\
-          \ {model_name}\")\n        model_path = f\"{models_folder}/{model_name}\"\
-          \n\n        vllm_process, vllm_server = launch_vllm(model_path, gpu_count)\n\
-          \n        # model ID is the model_path value in vLLM\n        evaluator\
-          \ = MTBenchEvaluator(\n            model_name=model_path,\n            judge_model_name=judge_model_name,\n\
-          \            output_dir=\"/tmp/eval_output\",\n            merge_system_user_message=merge_system_user_message,\n\
-          \        )\n\n        evaluator.gen_answers(\n            server_url=vllm_server,\n\
-          \            serving_gpus=gpu_count,\n            max_workers=max_workers,\n\
-          \            http_client=judge_http_client,\n        )\n\n        shutdown_vllm(vllm_process)\n\
-          \n        overall_score, qa_pairs, turn_scores, error_rate = evaluator.judge_answers(\n\
-          \            server_url=judge_endpoint,\n            api_key=judge_api_key,\n\
-          \            serving_gpus=gpu_count,\n            max_workers=max_workers,\n\
-          \            http_client=judge_http_client,\n        )\n\n        mt_bench_data\
-          \ = {\n            \"report_title\": \"SKILLS EVALUATION REPORT\",\n   \
-          \         \"model\": model_path,\n            \"judge_model\": judge_model_name,\n\
-          \            \"overall_score\": overall_score,\n            \"turn_scores\"\
-          : turn_scores,\n            \"qa_scores\": qa_pairs,\n            \"error_rate\"\
-          : error_rate,\n        }\n\n        all_mt_bench_data.append(mt_bench_data)\n\
-          \        scores[model_path] = overall_score\n\n    outputs = NamedTuple(\"\
-          outputs\", best_model=str, best_score=float)\n    best_model = max(scores,\
-          \ key=scores.get)\n    best_score = scores[best_model]\n    mt_bench_report\
-          \ = {\n        \"best_model\": best_model,\n        \"best_score\": best_score,\n\
-          \        \"reports\": all_mt_bench_data,\n    }\n\n    with open(output_path,\
-          \ \"w\", encoding=\"utf-8\") as f:\n        json.dump(mt_bench_report, f,\
-          \ indent=4)\n\n    # Rename the best model directory to \"candidate_model\"\
-          \ for the next step\n    # So we know which model to use for the final evaluation\n\
-          \    if os.path.exists(os.path.join(models_folder, \"candidate_model\")):\n\
-          \        print(\"candidate_model already exists. Skipping renaming\")\n\
-          \    else:\n        os.rename(\n            os.path.join(models_folder,\
-          \ best_model),\n            os.path.join(models_folder, \"candidate_model\"\
-          ),\n        )\n\n    return outputs(best_model=best_model, best_score=best_score)\n\
-          \n"
-        env:
-        - name: HOME
-          value: /tmp
-        - name: HF_HOME
-          value: /tmp
-        - name: JUDGE_CA_CERT_PATH
-          value: /tmp/cert/ca.crt
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
-        resources:
-          accelerator:
-            count: '1'
-            type: nvidia.com/gpu
-    exec-sdg-op:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - sdg_op
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef sdg_op(\n    num_instructions_to_generate: int,\n    pipeline:\
-          \ str,\n    repo_branch: Optional[str],\n    repo_pr: Optional[int],\n \
-          \   taxonomy_path: str = \"/data/taxonomy\",\n    sdg_path: str = \"/data/sdg\"\
-          ,\n    sdg_sampling_size: float = 1.0,\n):\n    import os\n    import shutil\n\
-          \    import tempfile\n\n    import instructlab.sdg\n    import openai\n\
-          \    import xdg_base_dirs\n    import yaml\n\n    api_key = os.getenv(\"\
-          api_key\")\n    model = os.getenv(\"model\")\n    endpoint = os.getenv(\"\
-          endpoint\")\n\n    sdg_ca_cert_path = os.getenv(\"SDG_CA_CERT_PATH\")\n\
-          \    use_tls = os.path.exists(sdg_ca_cert_path) and (\n        os.path.getsize(sdg_ca_cert_path)\
-          \ > 0\n    )\n    if use_tls:\n        import httpx\n\n        custom_http_client\
-          \ = httpx.Client(verify=sdg_ca_cert_path)\n        client = openai.OpenAI(\n\
-          \            base_url=endpoint, api_key=api_key, http_client=custom_http_client\n\
-          \        )\n    else:\n        client = openai.OpenAI(base_url=endpoint,\
-          \ api_key=api_key)\n\n    taxonomy_base = \"main\" if repo_branch or (repo_pr\
-          \ and int(repo_pr) > 0) else \"empty\"\n\n    print(\"Generating synthetic\
-          \ dataset for:\")\n    print()\n    print(\n        instructlab.sdg.utils.taxonomy.read_taxonomy(\n\
-          \            taxonomy_path, taxonomy_base, document_output_dir=f\"{sdg_path}/documents\"\
-          \n        )\n    )\n\n    # Generate synthetic dataset\n    # 1.0 is the\
-          \ default size\n    if sdg_sampling_size == 1.0:\n        # generate_data\
-          \ has a magic word for its taxonomy_base argument - 'empty'\n        # it\
-          \ allows generating from the whole repo, see:\n        # https://github.com/instructlab/sdg/blob/c6a9e74a1618b1077cd38e713b8aaed8b7c0c8ce/src/instructlab/sdg/utils/taxonomy.py#L230\n\
-          \        instructlab.sdg.generate_data(\n            client=client,\n  \
-          \          num_instructions_to_generate=num_instructions_to_generate,\n\
-          \            output_dir=sdg_path,\n            taxonomy=taxonomy_path,\n\
-          \            taxonomy_base=taxonomy_base,\n            model_name=model,\n\
-          \            pipeline=pipeline,\n            chunk_word_count=1000,\n  \
-          \          server_ctx_size=4096,\n        )\n    # Tweak precomputed skills\
-          \ data ratio if needed\n    else:\n        skills_recipe = \"/usr/share/instructlab/sdg/default_data_recipes/skills.yaml\"\
-          \n\n        def set_precomputed_skills_data_ratio(sampling_size: float,\
-          \ skills_recipe: str):\n            if os.path.exists(skills_recipe):\n\
-          \                with open(skills_recipe, \"r\", encoding=\"utf-8\") as\
-          \ file:\n                    skills_yaml = yaml.load(file, Loader=yaml.Loader)\n\
-          \n                skills_yaml[\"datasets\"][0][\"sampling_size\"] = sampling_size\n\
-          \n                with open(skills_recipe, \"w\", encoding=\"utf-8\") as\
-          \ file:\n                    yaml.dump(skills_yaml, file)\n\n        try:\n\
-          \            set_precomputed_skills_data_ratio(\n                sampling_size=sdg_sampling_size,\
-          \ skills_recipe=skills_recipe\n            )\n        except PermissionError:\n\
-          \            print(\"Failed to set precomputed skills data ratio: Permission\
-          \ denied\")\n            print(\"Attempting to move default data recipes\
-          \ to temporary directory\")\n\n            # Create a temporary directory\n\
-          \            with tempfile.TemporaryDirectory() as temp_dir:\n         \
-          \       # Create a default_data_recipes directory\n                temp_dir\
-          \ = os.path.join(temp_dir, \"default_data_recipes\")\n                os.mkdir(temp_dir)\n\
-          \n                # Copy default_data_recipes/skills.yaml to the temporary\
-          \ directory\n                shutil.copy(skills_recipe, temp_dir)\n\n  \
-          \              # Also copy the current pipeline directory to the temporary\
-          \ directory - it's a small\n                # directory like 28KB\n    \
-          \            # This isn't needed if the pipeline is either \"full\" or \"\
-          simple\" but it's future-proofing\n                data_dirs = [\n     \
-          \               os.path.join(str(dir), \"instructlab\", \"sdg\")\n     \
-          \               for dir in xdg_base_dirs.xdg_data_dirs()\n             \
-          \   ]\n                temp_pipeline_dir = os.path.join(temp_dir, \"pipeline\"\
-          )\n                os.mkdir(temp_pipeline_dir)\n                for d in\
-          \ data_dirs:\n                    pipeline_path = os.path.join(d, \"pipelines\"\
-          , pipeline)\n                    if os.path.exists(pipeline_path):\n   \
-          \                     shutil.copytree(\n                            pipeline_path,\n\
-          \                            temp_pipeline_dir,\n                      \
-          \      dirs_exist_ok=True,\n                        )\n                \
-          \        break\n\n                # Build new skills.yaml path\n       \
-          \         new_skills_recipe = os.path.join(temp_dir, \"skills.yaml\")\n\
-          \                print(f\"New skills recipe path: {new_skills_recipe}\"\
-          )\n\n                # Override XDG_DATA_DIRS with the temporary directory\n\
-          \                # This allows SDG to read the new skills.yaml since it's\
-          \ looking into XDG_DATA_DIRS\n                # and looks for a default_data_recipes\
-          \ directory with a skills.yaml file\n                os.environ[\"XDG_DATA_DIRS\"\
-          ] = f\"{temp_dir}\"\n\n                # Try to set the precomputed skills\
-          \ data ratio again\n                try:\n                    set_precomputed_skills_data_ratio(\n\
-          \                        sampling_size=sdg_sampling_size, skills_recipe=new_skills_recipe\n\
-          \                    )\n                    print(\n                   \
-          \     f\"Successfully set precomputed skills data ratio to {sdg_sampling_size}\"\
-          \n                    )\n\n                    # generate_data has a magic\
-          \ word for its taxonomy_base argument - 'empty'\n                    # it\
-          \ allows generating from the whole repo, see:\n                    # https://github.com/instructlab/sdg/blob/c6a9e74a1618b1077cd38e713b8aaed8b7c0c8ce/src/instructlab/sdg/utils/taxonomy.py#L230\n\
-          \                    instructlab.sdg.generate_data(\n                  \
-          \      client=client,\n                        num_instructions_to_generate=num_instructions_to_generate,\n\
-          \                        output_dir=sdg_path,\n                        taxonomy=taxonomy_path,\n\
-          \                        taxonomy_base=taxonomy_base,\n                \
-          \        model_name=model,\n                        pipeline=pipeline,\n\
-          \                        chunk_word_count=1000,\n                      \
-          \  server_ctx_size=4096,\n                    )\n                except\
-          \ Exception as e:\n                    print(f\"Failed to set precomputed\
-          \ skills data ratio: {e}\")\n                    raise\n\n"
-        env:
-        - name: HOME
-          value: /tmp
-        - name: HF_HOME
-          value: /tmp
-        - name: SDG_CA_CERT_PATH
-          value: /tmp/cert/ca.crt
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
-    exec-sdg-to-artifact-op:
-      container:
-        args:
-        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['sdg'].path}}
-        command:
-        - /bin/sh
-        - -c
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
     exec-skills-processed-data-to-artifact-op:
       container:
         args:
         - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['skills_processed_data'].path}}
-        command:
-        - /bin/sh
-        - -c
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
-    exec-taxonomy-to-artifact-op:
-      container:
-        args:
-        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['taxonomy'].path}}
         command:
         - /bin/sh
         - -c
@@ -1632,12 +1141,6 @@ pipelineInfo:
   name: instructlab
 root:
   dag:
-    outputs:
-      artifacts:
-        generate-metrics-report-op-metrics:
-          artifactSelectors:
-          - outputArtifactKey: metrics
-            producerSubtask: generate-metrics-report-op
     tasks:
       createpvc:
         cachingOptions:
@@ -1709,8 +1212,8 @@ root:
         dependentTasks:
         - createpvc
         - createpvc-2
+        - extract-tarball-to-pvc-op
         - model-to-pvc-op
-        - sdg-op
         inputs:
           parameters:
             max_batch_len:
@@ -1724,7 +1227,7 @@ root:
           name: comp-deletepvc
         dependentTasks:
         - createpvc
-        - run-final-eval-op
+        - mock-op-5
         inputs:
           parameters:
             pvc_name:
@@ -1740,7 +1243,7 @@ root:
           name: comp-deletepvc-2
         dependentTasks:
         - createpvc-2
-        - run-final-eval-op
+        - mock-op-5
         inputs:
           parameters:
             pvc_name:
@@ -1756,11 +1259,11 @@ root:
           name: comp-deletepvc-3
         dependentTasks:
         - createpvc-3
-        - generate-metrics-report-op
-        - pvc-to-mmlu-branch-op
-        - pvc-to-model-op
-        - pvc-to-mt-bench-branch-op
-        - pvc-to-mt-bench-op
+        - mock-op-10
+        - mock-op-6
+        - mock-op-7
+        - mock-op-8
+        - mock-op-9
         inputs:
           parameters:
             pvc_name:
@@ -1769,42 +1272,42 @@ root:
                 producerTask: createpvc-3
         taskInfo:
           name: deletepvc-3
-      generate-metrics-report-op:
+      extract-tarball-to-pvc-op:
         cachingOptions: {}
         componentRef:
-          name: comp-generate-metrics-report-op
-        dependentTasks:
-        - createpvc-3
-        - run-final-eval-op
-        taskInfo:
-          name: generate-metrics-report-op
-      git-clone-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-git-clone-op
+          name: comp-extract-tarball-to-pvc-op
         dependentTasks:
         - createpvc
+        - importer
         inputs:
-          parameters:
-            repo_branch:
-              componentInputParameter: sdg_repo_branch
-            repo_pr:
-              componentInputParameter: sdg_repo_pr
-            repo_url:
-              componentInputParameter: sdg_repo_url
+          artifacts:
+            tarball_location:
+              taskOutputArtifact:
+                outputArtifactKey: artifact
+                producerTask: importer
         taskInfo:
-          name: git-clone-op
+          name: extract-tarball-to-pvc-op
       importer:
-        cachingOptions:
-          enableCache: true
+        cachingOptions: {}
         componentRef:
           name: comp-importer
         inputs:
           parameters:
             uri:
-              componentInputParameter: sdg_base_model
+              componentInputParameter: sdg_pregenerated_tarball
         taskInfo:
           name: importer
+      importer-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-importer-2
+        inputs:
+          parameters:
+            uri:
+              componentInputParameter: sdg_base_model
+        taskInfo:
+          name: importer-2
       knowledge-processed-data-to-artifact-op:
         cachingOptions: {}
         componentRef:
@@ -1814,77 +1317,116 @@ root:
         - data-processing-op
         taskInfo:
           name: knowledge-processed-data-to-artifact-op
+      mock-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op
+        dependentTasks:
+        - createpvc
+        taskInfo:
+          name: mock-op
+      mock-op-10:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-10
+        dependentTasks:
+        - createpvc-3
+        - mock-op-5
+        taskInfo:
+          name: mock-op-10
+      mock-op-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-mock-op-2
+        dependentTasks:
+        - createpvc
+        - extract-tarball-to-pvc-op
+        - mock-op
+        taskInfo:
+          name: mock-op-2
+      mock-op-3:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-mock-op-3
+        dependentTasks:
+        - createpvc
+        - extract-tarball-to-pvc-op
+        - mock-op
+        taskInfo:
+          name: mock-op-3
+      mock-op-4:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-4
+        dependentTasks:
+        - createpvc-3
+        - pytorch-job-launcher-op-2
+        taskInfo:
+          name: mock-op-4
+      mock-op-5:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-5
+        dependentTasks:
+        - createpvc
+        - createpvc-2
+        - createpvc-3
+        - mock-op-4
+        taskInfo:
+          name: mock-op-5
+      mock-op-6:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-6
+        dependentTasks:
+        - createpvc-3
+        - mock-op-4
+        taskInfo:
+          name: mock-op-6
+      mock-op-7:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-7
+        dependentTasks:
+        - createpvc-3
+        - mock-op-4
+        taskInfo:
+          name: mock-op-7
+      mock-op-8:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-8
+        dependentTasks:
+        - createpvc-3
+        - mock-op-5
+        taskInfo:
+          name: mock-op-8
+      mock-op-9:
+        cachingOptions: {}
+        componentRef:
+          name: comp-mock-op-9
+        dependentTasks:
+        - createpvc-3
+        - mock-op-5
+        taskInfo:
+          name: mock-op-9
       model-to-pvc-op:
         cachingOptions: {}
         componentRef:
           name: comp-model-to-pvc-op
         dependentTasks:
         - createpvc-2
-        - importer
+        - importer-2
         inputs:
           artifacts:
             model:
               taskOutputArtifact:
                 outputArtifactKey: artifact
-                producerTask: importer
+                producerTask: importer-2
         taskInfo:
           name: model-to-pvc-op
-      pvc-to-mmlu-branch-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-pvc-to-mmlu-branch-op
-        dependentTasks:
-        - createpvc-3
-        - run-final-eval-op
-        inputs:
-          parameters:
-            pvc_path:
-              runtimeValue:
-                constant: /output/mmlu_branch/mmlu_branch_data.json
-        taskInfo:
-          name: pvc-to-mmlu-branch-op
-      pvc-to-model-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-pvc-to-model-op
-        dependentTasks:
-        - createpvc-3
-        - run-mt-bench-op
-        inputs:
-          parameters:
-            pvc_path:
-              runtimeValue:
-                constant: /output/phase_2/model/hf_format/candidate_model
-        taskInfo:
-          name: pvc-to-model-op
-      pvc-to-mt-bench-branch-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-pvc-to-mt-bench-branch-op
-        dependentTasks:
-        - createpvc-3
-        - run-final-eval-op
-        inputs:
-          parameters:
-            pvc_path:
-              runtimeValue:
-                constant: /output/mt_bench_branch/mt_bench_branch_data.json
-        taskInfo:
-          name: pvc-to-mt-bench-branch-op
-      pvc-to-mt-bench-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-pvc-to-mt-bench-op
-        dependentTasks:
-        - createpvc-3
-        - run-mt-bench-op
-        inputs:
-          parameters:
-            pvc_path:
-              runtimeValue:
-                constant: /output/mt_bench_data.json
-        taskInfo:
-          name: pvc-to-mt-bench-op
       pytorch-job-launcher-op:
         cachingOptions: {}
         componentRef:
@@ -1992,87 +1534,6 @@ root:
               componentInputParameter: train_seed
         taskInfo:
           name: pytorch-job-launcher-op-2
-      run-final-eval-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-run-final-eval-op
-        dependentTasks:
-        - createpvc
-        - createpvc-2
-        - createpvc-3
-        - run-mt-bench-op
-        inputs:
-          parameters:
-            base_branch:
-              componentInputParameter: sdg_repo_branch
-            base_model_dir:
-              runtimeValue:
-                constant: /model/
-            batch_size:
-              componentInputParameter: final_eval_batch_size
-            candidate_branch:
-              componentInputParameter: sdg_repo_branch
-            candidate_model:
-              runtimeValue:
-                constant: /output/phase_2/model/hf_format/candidate_model
-            few_shots:
-              componentInputParameter: final_eval_few_shots
-            max_workers:
-              componentInputParameter: final_eval_max_workers
-            merge_system_user_message:
-              componentInputParameter: final_eval_merge_system_user_message
-        taskInfo:
-          name: run-final-eval-op
-      run-mt-bench-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-run-mt-bench-op
-        dependentTasks:
-        - createpvc-3
-        - pytorch-job-launcher-op-2
-        inputs:
-          parameters:
-            max_workers:
-              componentInputParameter: mt_bench_max_workers
-            merge_system_user_message:
-              componentInputParameter: mt_bench_merge_system_user_message
-            models_folder:
-              runtimeValue:
-                constant: /output/phase_2/model/hf_format
-        taskInfo:
-          name: run-mt-bench-op
-      sdg-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-sdg-op
-        dependentTasks:
-        - createpvc
-        - git-clone-op
-        inputs:
-          parameters:
-            num_instructions_to_generate:
-              componentInputParameter: sdg_scale_factor
-            pipeline:
-              componentInputParameter: sdg_pipeline
-            repo_branch:
-              componentInputParameter: sdg_repo_branch
-            repo_pr:
-              componentInputParameter: sdg_repo_pr
-            sdg_sampling_size:
-              componentInputParameter: sdg_sample_size
-        taskInfo:
-          name: sdg-op
-      sdg-to-artifact-op:
-        cachingOptions:
-          enableCache: true
-        componentRef:
-          name: comp-sdg-to-artifact-op
-        dependentTasks:
-        - createpvc
-        - git-clone-op
-        - sdg-op
-        taskInfo:
-          name: sdg-to-artifact-op
       skills-processed-data-to-artifact-op:
         cachingOptions: {}
         componentRef:
@@ -2082,17 +1543,6 @@ root:
         - data-processing-op
         taskInfo:
           name: skills-processed-data-to-artifact-op
-      taxonomy-to-artifact-op:
-        cachingOptions:
-          enableCache: true
-        componentRef:
-          name: comp-taxonomy-to-artifact-op
-        dependentTasks:
-        - createpvc
-        - git-clone-op
-        - sdg-op
-        taskInfo:
-          name: taxonomy-to-artifact-op
   inputDefinitions:
     parameters:
       final_eval_batch_size:
@@ -2269,12 +1719,6 @@ root:
         description: Training parameter. Random seed for initializing training.
         isOptional: true
         parameterType: NUMBER_INTEGER
-  outputDefinitions:
-    artifacts:
-      generate-metrics-report-op-metrics:
-        artifactType:
-          schemaTitle: system.Metrics
-          schemaVersion: 0.0.1
 schemaVersion: 2.1.0
 sdkVersion: kfp-2.9.0
 ---
@@ -2292,13 +1736,14 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc
-        exec-generate-metrics-report-op:
-          pvcMount:
-          - mountPath: /output
-            taskOutputParameter:
-              outputParameterKey: name
-              producerTask: createpvc-3
-        exec-git-clone-op:
+        exec-extract-tarball-to-pvc-op:
+          configMapAsEnv:
+          - configMapName: teacher-server
+            keyToEnv:
+            - configMapKey: endpoint
+              envVar: endpoint
+            - configMapKey: model
+              envVar: model
           configMapAsVolume:
           - configMapName: teacher-server
             mountPath: /tmp/cert
@@ -2308,49 +1753,68 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: api_key
+              secretKey: api_key
+            secretName: teacher-server
         exec-knowledge-processed-data-to-artifact-op:
           pvcMount:
           - mountPath: /data
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc
-        exec-model-to-pvc-op:
+        exec-mock-op:
+          configMapAsVolume:
+          - configMapName: teacher-server
+            mountPath: /tmp/cert
+            optional: false
           pvcMount:
-          - mountPath: /model
+          - mountPath: /data
             taskOutputParameter:
               outputParameterKey: name
-              producerTask: createpvc-2
-        exec-pvc-to-mmlu-branch-op:
-          pvcMount:
-          - mountPath: /output
-            taskOutputParameter:
-              outputParameterKey: name
-              producerTask: createpvc-3
-        exec-pvc-to-model-op:
+              producerTask: createpvc
+        exec-mock-op-10:
           pvcMount:
           - mountPath: /output
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc-3
-        exec-pvc-to-mt-bench-branch-op:
+        exec-mock-op-2:
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-mock-op-3:
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
+        exec-mock-op-4:
+          configMapAsEnv:
+          - configMapName: judge-server
+            keyToEnv:
+            - configMapKey: endpoint
+              envVar: JUDGE_ENDPOINT
+            - configMapKey: model
+              envVar: JUDGE_NAME
+          configMapAsVolume:
+          - configMapName: judge-server
+            mountPath: /tmp/cert
+            optional: false
           pvcMount:
           - mountPath: /output
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc-3
-        exec-pvc-to-mt-bench-op:
-          pvcMount:
-          - mountPath: /output
-            taskOutputParameter:
-              outputParameterKey: name
-              producerTask: createpvc-3
-        exec-pytorch-job-launcher-op-2:
-          pvcMount:
-          - mountPath: /output
-            taskOutputParameter:
-              outputParameterKey: name
-              producerTask: createpvc-3
-        exec-run-final-eval-op:
+          secretAsEnv:
+          - keyToEnv:
+            - envVar: JUDGE_API_KEY
+              secretKey: api_key
+            secretName: judge-server
+        exec-mock-op-5:
           configMapAsEnv:
           - configMapName: judge-server
             keyToEnv:
@@ -2380,63 +1844,43 @@ platforms:
             - envVar: JUDGE_API_KEY
               secretKey: api_key
             secretName: judge-server
-        exec-run-mt-bench-op:
-          configMapAsEnv:
-          - configMapName: judge-server
-            keyToEnv:
-            - configMapKey: endpoint
-              envVar: JUDGE_ENDPOINT
-            - configMapKey: model
-              envVar: JUDGE_NAME
-          configMapAsVolume:
-          - configMapName: judge-server
-            mountPath: /tmp/cert
-            optional: false
+        exec-mock-op-6:
           pvcMount:
           - mountPath: /output
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc-3
-          secretAsEnv:
-          - keyToEnv:
-            - envVar: JUDGE_API_KEY
-              secretKey: api_key
-            secretName: judge-server
-        exec-sdg-op:
-          configMapAsEnv:
-          - configMapName: teacher-server
-            keyToEnv:
-            - configMapKey: endpoint
-              envVar: endpoint
-            - configMapKey: model
-              envVar: model
-          configMapAsVolume:
-          - configMapName: teacher-server
-            mountPath: /tmp/cert
-            optional: false
+        exec-mock-op-7:
           pvcMount:
-          - mountPath: /data
+          - mountPath: /output
             taskOutputParameter:
               outputParameterKey: name
-              producerTask: createpvc
-          secretAsEnv:
-          - keyToEnv:
-            - envVar: api_key
-              secretKey: api_key
-            secretName: teacher-server
-        exec-sdg-to-artifact-op:
+              producerTask: createpvc-3
+        exec-mock-op-8:
           pvcMount:
-          - mountPath: /data
+          - mountPath: /output
             taskOutputParameter:
               outputParameterKey: name
-              producerTask: createpvc
+              producerTask: createpvc-3
+        exec-mock-op-9:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
+        exec-model-to-pvc-op:
+          pvcMount:
+          - mountPath: /model
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-2
+        exec-pytorch-job-launcher-op-2:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
         exec-skills-processed-data-to-artifact-op:
-          pvcMount:
-          - mountPath: /data
-            taskOutputParameter:
-              outputParameterKey: name
-              producerTask: createpvc
-        exec-taxonomy-to-artifact-op:
           pvcMount:
           - mountPath: /data
             taskOutputParameter:
