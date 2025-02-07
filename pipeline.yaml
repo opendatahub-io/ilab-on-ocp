@@ -291,6 +291,20 @@ components:
           artifactType:
             schemaTitle: system.Metrics
             schemaVersion: 0.0.1
+  comp-git-clone-op:
+    executorLabel: exec-git-clone-op
+    inputDefinitions:
+      parameters:
+        repo_branch:
+          parameterType: STRING
+        repo_pr:
+          parameterType: NUMBER_INTEGER
+        repo_url:
+          parameterType: STRING
+        taxonomy_path:
+          defaultValue: /data/taxonomy
+          isOptional: true
+          parameterType: STRING
   comp-importer:
     executorLabel: exec-importer
     inputDefinitions:
@@ -329,6 +343,89 @@ components:
         pvc_path:
           defaultValue: /model
           isOptional: true
+          parameterType: STRING
+  comp-prerequisites-check-op:
+    dag:
+      tasks:
+        test-judge-teacher-models:
+          cachingOptions: {}
+          componentRef:
+            name: comp-test-judge-teacher-models
+          inputs:
+            parameters:
+              secret_name:
+                componentInputParameter: eval_judge_secret
+          taskInfo:
+            name: test-judge-teacher-models
+        test-judge-teacher-models-2:
+          cachingOptions: {}
+          componentRef:
+            name: comp-test-judge-teacher-models-2
+          inputs:
+            parameters:
+              secret_name:
+                componentInputParameter: sdg_teacher_secret
+          taskInfo:
+            name: test-judge-teacher-models-2
+        test-model-registry:
+          cachingOptions: {}
+          componentRef:
+            name: comp-test-model-registry
+          inputs:
+            parameters:
+              model_name:
+                componentInputParameter: output_model_name
+              model_registry_endpoint:
+                componentInputParameter: output_model_registry_api_url
+              model_version:
+                componentInputParameter: output_model_version
+          taskInfo:
+            name: test-model-registry
+        test-oci-model:
+          cachingOptions: {}
+          componentRef:
+            name: comp-test-oci-model
+          inputs:
+            parameters:
+              output_oci_model_uri:
+                componentInputParameter: output_oci_model_uri
+              output_oci_registry_secret:
+                componentInputParameter: output_oci_registry_secret
+          taskInfo:
+            name: test-oci-model
+        test-taxonomy-repo:
+          cachingOptions: {}
+          componentRef:
+            name: comp-test-taxonomy-repo
+          inputs:
+            parameters:
+              sdg_repo_url:
+                componentInputParameter: sdg_repo_url
+          taskInfo:
+            name: test-taxonomy-repo
+        test-training-operator:
+          cachingOptions: {}
+          componentRef:
+            name: comp-test-training-operator
+          taskInfo:
+            name: test-training-operator
+    inputDefinitions:
+      parameters:
+        eval_judge_secret:
+          parameterType: STRING
+        output_model_name:
+          parameterType: STRING
+        output_model_registry_api_url:
+          parameterType: STRING
+        output_model_version:
+          parameterType: STRING
+        output_oci_model_uri:
+          parameterType: STRING
+        output_oci_registry_secret:
+          parameterType: STRING
+        sdg_repo_url:
+          parameterType: STRING
+        sdg_teacher_secret:
           parameterType: STRING
   comp-pvc-to-mmlu-branch-op:
     executorLabel: exec-pvc-to-mmlu-branch-op
@@ -656,6 +753,44 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
+  comp-test-judge-teacher-models:
+    executorLabel: exec-test-judge-teacher-models
+    inputDefinitions:
+      parameters:
+        secret_name:
+          parameterType: STRING
+  comp-test-judge-teacher-models-2:
+    executorLabel: exec-test-judge-teacher-models-2
+    inputDefinitions:
+      parameters:
+        secret_name:
+          parameterType: STRING
+  comp-test-model-registry:
+    executorLabel: exec-test-model-registry
+    inputDefinitions:
+      parameters:
+        model_name:
+          parameterType: STRING
+        model_registry_endpoint:
+          parameterType: STRING
+        model_version:
+          parameterType: STRING
+  comp-test-oci-model:
+    executorLabel: exec-test-oci-model
+    inputDefinitions:
+      parameters:
+        output_oci_model_uri:
+          parameterType: STRING
+        output_oci_registry_secret:
+          parameterType: STRING
+  comp-test-taxonomy-repo:
+    executorLabel: exec-test-taxonomy-repo
+    inputDefinitions:
+      parameters:
+        sdg_repo_url:
+          parameterType: STRING
+  comp-test-training-operator:
+    executorLabel: exec-test-training-operator
   comp-upload-model-op:
     executorLabel: exec-upload-model-op
     inputDefinitions:
@@ -821,6 +956,35 @@ deploymentSpec:
           \                f\"{report}_base_model_score\", report_data[\"base_model_score\"\
           ]\n            )\n\n"
         image: quay.io/modh/odh-generic-data-science-notebook@sha256:72c1d095adbda216a1f1b4b6935e3e2c717cbc58964009464ccd36c0b98312b2
+    exec-git-clone-op:
+      container:
+        args:
+        - "\n            # Increase logging verbosity\n            set -x &&\n\n \
+          \           # Add TLS Parameters if CA Cert exists and is non-zero size\n\
+          \            ADDITIONAL_CLONE_PARAMS=\"\"\n            if [ -s \"$TAXONOMY_CA_CERT_PATH\"\
+          \ ]; then\n                ADDITIONAL_CLONE_PARAMS=\"-c http.sslVerify=true\
+          \ -c http.sslCAInfo=$TAXONOMY_CA_CERT_PATH\"\n            fi\n\n       \
+          \     # Clone Taxonomy Repo\n            git clone $ADDITIONAL_CLONE_PARAMS\
+          \ {{$.inputs.parameters['repo_url']}} {{$.inputs.parameters['taxonomy_path']}}\
+          \ &&\n            cd {{$.inputs.parameters['taxonomy_path']}} &&\n\n   \
+          \         # Run additional configuration if TLS certs provided\n       \
+          \     if [ -s \"$TAXONOMY_CA_CERT_PATH\" ]; then\n                git config\
+          \ http.sslVerify true &&\n                git config http.sslCAInfo $TAXONOMY_CA_CERT_PATH\n\
+          \            fi &&\n\n            # Checkout and use taxonomy repo branch\
+          \ or PR if specified\n            if [ -n \"{{$.inputs.parameters['repo_branch']}}\"\
+          \ ]; then\n                git fetch origin {{$.inputs.parameters['repo_branch']}}\
+          \ && git checkout {{$.inputs.parameters['repo_branch']}};\n            elif\
+          \ [ -n \"{{$.inputs.parameters['repo_pr']}}\" ] && [ {{$.inputs.parameters['repo_pr']}}\
+          \ -gt 0 ]; then\n                git fetch origin pull/{{$.inputs.parameters['repo_pr']}}/head:{{$.inputs.parameters['repo_pr']}}\
+          \ && git checkout {{$.inputs.parameters['repo_pr']}};\n            fi\n\
+          \            "
+        command:
+        - /bin/sh
+        - -c
+        env:
+        - name: TAXONOMY_CA_CERT_PATH
+          value: /tmp/cert/taxonomy-ca.crt
+        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
     exec-importer:
       importer:
         artifactUri:
@@ -1867,6 +2031,321 @@ deploymentSpec:
         - /bin/sh
         - -c
         image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+    exec-test-judge-teacher-models:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - test_judge_teacher_models
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef test_judge_teacher_models(secret_name: str):\n    import base64\n\
+          \    import json\n    import os\n    import sys\n    import time\n\n   \
+          \ import requests\n    from kubernetes import client, config\n    from kubernetes.client.rest\
+          \ import ApiException\n\n    config.load_incluster_config()\n\n    model_endpoint\
+          \ = \"\"\n    model_name = \"\"\n    model_api_key = \"\"\n    with open(\n\
+          \        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\", \"\
+          r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
+          \n    with client.ApiClient() as api_client:\n        core_api = client.CoreV1Api(api_client)\n\
+          \n        try:\n            secret = core_api.read_namespaced_secret(secret_name,\
+          \ namespace)\n            print(f\"Reading secret {secret_name} data...\"\
+          )\n            model_api_key = base64.b64decode(secret.data[\"api_key\"\
+          ]).decode(\"utf-8\")\n            model_name = base64.b64decode(secret.data[\"\
+          model_name\"]).decode(\"utf-8\")\n            model_endpoint = base64.b64decode(secret.data[\"\
+          endpoint\"]).decode(\"utf-8\")\n        except (ApiException, KeyError)\
+          \ as e:\n            print(f\"\"\"\n            #######################################################\
+          \ ERROR ################################################################\n\
+          \            # Error reading {secret_name}. Ensure you created a secret\
+          \ with this name in namespace {namespace} and has 'api_key' present #\n\
+          \            ##############################################################################################################################\n\
+          \            \"\"\")\n            sys.exit(1)\n\n    request_auth = {\"\
+          Authorization\": f\"Bearer {model_api_key}\"}\n    request_body = {\n  \
+          \      \"model\": model_name,\n        \"messages\": [{\"role\": \"user\"\
+          , \"content\": \"tell me a funny joke.\"}],\n    }\n    # Make 3 attempts\n\
+          \    for i in range(1, 3):\n        resp = requests.post(\n            f\"\
+          {model_endpoint}/chat/completions\",\n            headers=request_auth,\n\
+          \            data=json.dumps(request_body),\n            verify=os.environ[\"\
+          SDG_CA_CERT_PATH\"],\n        )\n        if resp.status_code != 200:\n \
+          \           print(f\"Model Server {model_name} is not available. Attempt\
+          \ {i}/3...\")\n            time.sleep(30)\n        else:\n            print(f\"\
+          \"\"\n            ################### INFO #######################\n   \
+          \         # Model Server {model_name} is up and running. #\n           \
+          \ ################################################\n            \"\"\")\n\
+          \            pass\n    print(f\"\"\"\n    ############################################\
+          \ ERROR ####################################################\n    # Model\
+          \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
+          \ to serve requests. #\n    #######################################################################################################\n\
+          \    \"\"\")\n    sys.exit(1)\n\n"
+        env:
+        - name: SDG_CA_CERT_PATH
+          value: /tmp/cert/ca.crt
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
+    exec-test-judge-teacher-models-2:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - test_judge_teacher_models
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef test_judge_teacher_models(secret_name: str):\n    import base64\n\
+          \    import json\n    import os\n    import sys\n    import time\n\n   \
+          \ import requests\n    from kubernetes import client, config\n    from kubernetes.client.rest\
+          \ import ApiException\n\n    config.load_incluster_config()\n\n    model_endpoint\
+          \ = \"\"\n    model_name = \"\"\n    model_api_key = \"\"\n    with open(\n\
+          \        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\", \"\
+          r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
+          \n    with client.ApiClient() as api_client:\n        core_api = client.CoreV1Api(api_client)\n\
+          \n        try:\n            secret = core_api.read_namespaced_secret(secret_name,\
+          \ namespace)\n            print(f\"Reading secret {secret_name} data...\"\
+          )\n            model_api_key = base64.b64decode(secret.data[\"api_key\"\
+          ]).decode(\"utf-8\")\n            model_name = base64.b64decode(secret.data[\"\
+          model_name\"]).decode(\"utf-8\")\n            model_endpoint = base64.b64decode(secret.data[\"\
+          endpoint\"]).decode(\"utf-8\")\n        except (ApiException, KeyError)\
+          \ as e:\n            print(f\"\"\"\n            #######################################################\
+          \ ERROR ################################################################\n\
+          \            # Error reading {secret_name}. Ensure you created a secret\
+          \ with this name in namespace {namespace} and has 'api_key' present #\n\
+          \            ##############################################################################################################################\n\
+          \            \"\"\")\n            sys.exit(1)\n\n    request_auth = {\"\
+          Authorization\": f\"Bearer {model_api_key}\"}\n    request_body = {\n  \
+          \      \"model\": model_name,\n        \"messages\": [{\"role\": \"user\"\
+          , \"content\": \"tell me a funny joke.\"}],\n    }\n    # Make 3 attempts\n\
+          \    for i in range(1, 3):\n        resp = requests.post(\n            f\"\
+          {model_endpoint}/chat/completions\",\n            headers=request_auth,\n\
+          \            data=json.dumps(request_body),\n            verify=os.environ[\"\
+          SDG_CA_CERT_PATH\"],\n        )\n        if resp.status_code != 200:\n \
+          \           print(f\"Model Server {model_name} is not available. Attempt\
+          \ {i}/3...\")\n            time.sleep(30)\n        else:\n            print(f\"\
+          \"\"\n            ################### INFO #######################\n   \
+          \         # Model Server {model_name} is up and running. #\n           \
+          \ ################################################\n            \"\"\")\n\
+          \            pass\n    print(f\"\"\"\n    ############################################\
+          \ ERROR ####################################################\n    # Model\
+          \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
+          \ to serve requests. #\n    #######################################################################################################\n\
+          \    \"\"\")\n    sys.exit(1)\n\n"
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
+    exec-test-model-registry:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - test_model_registry
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef test_model_registry(\n    model_registry_endpoint: Optional[str],\n\
+          \    model_name: Optional[str],\n    model_version: Optional[str],\n):\n\
+          \    import sys\n\n    from model_registry import ModelRegistry\n\n    try:\n\
+          \        model_registry = ModelRegistry(\n            server_address=model_registry_endpoint,\n\
+          \            author=\"ilab pipeline\",\n            is_secure=False,\n \
+          \           user_token=open(\n                \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
+          \n            ).readline(),\n        )\n        if model_registry.get_model_version(model_name,\
+          \ model_version) is not None:\n            print(f\"\"\"\n            #######################################\
+          \ ERROR #######################################\n            # There is\
+          \ already a model version registered. You cannot overwrite a model version\
+          \ #\n            #####################################################################################\n\
+          \            \"\"\")\n            sys.exit(1)\n        print(f\"\"\"\n \
+          \       ########### INFO ##############\n        # Model Registry is available\
+          \ #\n        ###############################\n        \"\"\")\n    except\
+          \ Exception as e:\n        print(f\"\"\"\n        ############# ERROR ###############\n\
+          \        # Model Registry is not available #\n        ###################################\n\
+          \        \"\"\")\n        sys.exit(1)\n\n"
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
+    exec-test-oci-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - test_oci_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef test_oci_model(output_oci_model_uri: str, output_oci_registry_secret:\
+          \ str):\n    import base64\n    import json\n    import sys\n\n    from\
+          \ kubernetes import client, config\n    from kubernetes.client.rest import\
+          \ ApiException\n\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          , \"r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
+          \    config.load_incluster_config()\n\n    if output_oci_model_uri is None:\n\
+          \        print(f\"\"\"\n        ############################## INFO ##################################\n\
+          \        # Parameter output_oci_model_uri not provided. Skipping this step...\
+          \ #\n        ######################################################################\n\
+          \        \"\"\")\n        sys.exit(0)\n    elif not output_oci_model_uri.startswith(\"\
+          oci://\"):\n        # If SDG Model Base is not an OCI image, just inform\
+          \ user and quit\n        print(f\"\"\"\n        ###############################\
+          \ INFO ####################################\n        # Model {output_oci_model_uri}\
+          \ is not a ModelCar. Skipping this step... #\n        #########################################################################\n\
+          \        \"\"\")\n        sys.exit(0)\n\n    # Extract from sdg_base_model\
+          \ parameter the registry name\n    registry_name = output_oci_model_uri.replace(\"\
+          oci://\", \"\").split(\"/\")[0]\n\n    with client.ApiClient() as api_client:\n\
+          \        core_api = client.CoreV1Api(api_client)\n        try:\n       \
+          \     secret = core_api.read_namespaced_secret(sdg_oci_docker_secret, namespace)\n\
+          \            print(f\"Reading secret {sdg_oci_docker_secret} data...\")\n\
+          \            if secret.type == \"kubernetes.io/dockerconfigjson\":\n   \
+          \             # handle authentication if secret provided is kubernetes.io/dockerconfigjson\n\
+          \                docker_config_json = json.loads(\n                    base64.b64decode(secret.data[\"\
+          .dockerconfigjson\"]).decode(\"utf-8\")\n                )\n           \
+          \     if registry_name not in docker_config_json[\"auths\"]:\n         \
+          \           print(f\"\"\"\n                    ##########################################################\
+          \ ERROR ########################################################################################\n\
+          \                    # OCI Secret {sdg_oci_docker_secret} does not have\
+          \ an auth token present for {registry_name}. Ensure that the secret provided\
+          \ has the proper auth token #\n                    #########################################################################################################################################################\n\
+          \                    \"\"\")\n                    sys.exit(1)\n        \
+          \        print(f\"OCI Secret has auth token present for {registry_name}\"\
+          )\n            elif secret.type == \"kubernetes.io/dockercfg\":\n      \
+          \          # handle authentication if secret provided is kubernetes.io/dockercfg\n\
+          \                dockercfg_json = json.loads(\n                    base64.b64decode(secret.data[\"\
+          .dockercfg\"]).decode(\"utf-8\")\n                )\n                if\
+          \ registry_name not in docker_config_json.keys():\n                    print(f\"\
+          \"\"\n                    ##################################################################\
+          \ ERROR ################################################################################\n\
+          \                    # OCI Secret {sdg_oci_docker_secret} does not have\
+          \ an auth token present for {registry_name}. Ensure that the secret provided\
+          \ has the proper auth token #\n                    #########################################################################################################################################################\n\
+          \                    \"\"\")\n                    sys.exit(1)\n        \
+          \        print(f\"\"\"\n                ######################## INFO ###########################\n\
+          \                # OCI Secret has auth token present for {registry_name}\
+          \ #\n                #########################################################\n\
+          \                \"\"\")\n        except ApiException as e:\n          \
+          \  print(f\"\"\"\n            ##############################################\
+          \ ERROR #################################################################\n\
+          \            # Secret {sdg_oci_docker_secret} does not exist. Ensure you\
+          \ created a secret with this name in namespace {namespace} #\n         \
+          \   ######################################################################################################################\n\
+          \            \"\"\")\n            sys.exit(1)\n\n"
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
+    exec-test-taxonomy-repo:
+      container:
+        args:
+        - "\n            # Increase logging verbosity\n            set -x &&\n\n \
+          \           # Add TLS Parameters if CA Cert exists and is non-zero size\n\
+          \            ADDITIONAL_CLONE_PARAMS=\"\"\n            if [ -s \"$TAXONOMY_CA_CERT_PATH\"\
+          \ ]; then\n                ADDITIONAL_CLONE_PARAMS=\"-c http.sslVerify=true\
+          \ -c http.sslCAInfo=$TAXONOMY_CA_CERT_PATH\"\n            fi\n\n       \
+          \     # ls-remote will fail if repo is not valid\n            git ls-remote\
+          \ {{$.inputs.parameters['sdg_repo_url']}} > /dev/null;\n            "
+        command:
+        - /bin/sh
+        - -c
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
+    exec-test-training-operator:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - test_training_operator
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef test_training_operator():\n    import sys\n\n    from kubernetes\
+          \ import client, config\n    from kubernetes.client.rest import ApiException\n\
+          \n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          , \"r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
+          \    config.load_incluster_config()\n\n    with client.ApiClient() as api_client:\n\
+          \        api_instance = client.CustomObjectsApi(api_client)\n        group\
+          \ = \"kubeflow.org\"\n        version = \"v1\"\n        plural = \"pytorchjobs\"\
+          \n\n        try:\n            api_response = api_instance.list_namespaced_custom_object(\n\
+          \                group, version, namespace, plural\n            )\n    \
+          \        print(\"\"\"\n            ######################### INFO ###########################\n\
+          \            # Kubeflow Training Operator PyTorchJob CRD is available #\n\
+          \            ##########################################################\n\
+          \            \"\"\")\n        except ApiException as e:\n            print(\"\
+          \"\"\n            #################################################### ERROR\
+          \ ######################################################################\n\
+          \            # Kubeflow Training Operator PyTorchJob CRD is unavailable.\
+          \ Ensure your OpenShift AI installation has Training Operator enabled #\n\
+          \            #################################################################################################################################\n\
+          \            \"\"\")\n            sys.exit(1)\n\n"
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
     exec-upload-model-op:
       container:
         args:
@@ -2012,6 +2491,8 @@ root:
           enableCache: true
         componentRef:
           name: comp-createpvc
+        dependentTasks:
+        - prerequisites-check-op
         inputs:
           parameters:
             access_modes:
@@ -2032,6 +2513,8 @@ root:
           enableCache: true
         componentRef:
           name: comp-createpvc-2
+        dependentTasks:
+        - prerequisites-check-op
         inputs:
           parameters:
             access_modes:
@@ -2052,6 +2535,8 @@ root:
           enableCache: true
         componentRef:
           name: comp-createpvc-3
+        dependentTasks:
+        - prerequisites-check-op
         inputs:
           parameters:
             access_modes:
@@ -2143,11 +2628,29 @@ root:
         - run-final-eval-op
         taskInfo:
           name: generate-metrics-report-op
+      git-clone-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-git-clone-op
+        dependentTasks:
+        - createpvc
+        inputs:
+          parameters:
+            repo_branch:
+              componentInputParameter: sdg_repo_branch
+            repo_pr:
+              componentInputParameter: sdg_repo_pr
+            repo_url:
+              componentInputParameter: sdg_repo_url
+        taskInfo:
+          name: git-clone-op
       importer:
         cachingOptions:
           enableCache: true
         componentRef:
           name: comp-importer
+        dependentTasks:
+        - prerequisites-check-op
         inputs:
           parameters:
             uri:
@@ -2178,6 +2681,31 @@ root:
                 producerTask: importer
         taskInfo:
           name: model-to-pvc-op
+      prerequisites-check-op:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-prerequisites-check-op
+        inputs:
+          parameters:
+            eval_judge_secret:
+              componentInputParameter: eval_judge_secret
+            output_model_name:
+              componentInputParameter: output_model_name
+            output_model_registry_api_url:
+              componentInputParameter: output_model_registry_api_url
+            output_model_version:
+              componentInputParameter: output_model_version
+            output_oci_model_uri:
+              componentInputParameter: output_oci_model_uri
+            output_oci_registry_secret:
+              componentInputParameter: output_oci_registry_secret
+            sdg_repo_url:
+              componentInputParameter: sdg_repo_url
+            sdg_teacher_secret:
+              componentInputParameter: sdg_teacher_secret
+        taskInfo:
+          name: prerequisites-check-op
       pvc-to-mmlu-branch-op:
         cachingOptions: {}
         componentRef:
@@ -2788,6 +3316,16 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc-3
+        exec-git-clone-op:
+          configMapAsVolume:
+          - configMapName: teacher-server
+            mountPath: /tmp/cert
+            optional: false
+          pvcMount:
+          - mountPath: /data
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc
         exec-knowledge-processed-data-to-artifact-op:
           pvcMount:
           - mountPath: /data
@@ -2880,6 +3418,11 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc
+        exec-test-judge-teacher-models:
+          configMapAsVolume:
+          - configMapName: kube-root-ca.crt
+            mountPath: /tmp/cert
+            optional: false
         exec-upload-model-op:
           pvcMount:
           - mountPath: /output
