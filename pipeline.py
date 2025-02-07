@@ -18,7 +18,6 @@ from kfp.kubernetes import (
 
 from eval import generate_metrics_report_op, run_final_eval_op, run_mt_bench_op
 from sdg import (
-    git_clone_op,
     sdg_op,
     sdg_to_artifact_op,
     taxonomy_to_artifact_op,
@@ -37,12 +36,14 @@ from utils import (
     pvc_to_mt_bench_op,
     upload_model_op,
 )
-from utils.consts import RHELAI_IMAGE, RUNTIME_GENERIC_IMAGE
+from utils.components import prerequisites_check_op
+from utils.consts import (
+    JUDGE_CONFIG_MAP,
+    RHELAI_IMAGE,
+    RUNTIME_GENERIC_IMAGE,
+    TEACHER_CONFIG_MAP,
+)
 
-TEACHER_CONFIG_MAP = "teacher-server"
-TEACHER_SECRET = "teacher-server"
-JUDGE_CONFIG_MAP = "judge-server"
-JUDGE_SECRET = "judge-server"
 PIPELINE_FILE_NAME = "pipeline.yaml"
 IMPORTER_PIPELINE_FILE_NAME = "importer-pipeline.yaml"
 STANDALONE_TEMPLATE_FILE_NAME = "standalone.tpl"
@@ -178,6 +179,17 @@ def ilab_pipeline(
         k8s_storage_class_name: A Kubernetes StorageClass name for persistent volumes. Selected StorageClass must support RWX PersistentVolumes.
         k8s_storage_size: The storage size of the persistent volume used for data passing within the pipeline.
     """
+    # Pre-requisites check stage
+    prerequisites_check_task = prerequisites_check_op(
+        sdg_repo_url=sdg_repo_url,
+        output_oci_registry_secret=output_oci_registry_secret,
+        eval_judge_secret=eval_judge_secret,
+        sdg_teacher_secret=sdg_teacher_secret,
+        output_oci_model_uri=output_oci_model_uri,
+        output_model_registry_api_url=output_model_registry_api_url,
+        output_model_name=output_model_name,
+        output_model_version=output_model_version,
+    )
 
     # SDG stage
     sdg_input_pvc_task = CreatePVC(
@@ -190,6 +202,7 @@ def ilab_pipeline(
     model_tokenizer_source_task = dsl.importer(
         artifact_uri=f"oci://{RUNTIME_GENERIC_IMAGE}", artifact_class=dsl.Model
     )
+    model_tokenizer_source_task.after(prerequisites_check_task)
 
     sdg_task = sdg_op(
         num_instructions_to_generate=sdg_scale_factor,
@@ -239,6 +252,7 @@ def ilab_pipeline(
     model_source_task = dsl.importer(
         artifact_uri=sdg_base_model, artifact_class=dsl.Model
     )
+    model_source_task.after(prerequisites_check_task)
 
     model_pvc_task = CreatePVC(
         pvc_name_suffix="-model-cache",
@@ -246,6 +260,7 @@ def ilab_pipeline(
         size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
+    model_pvc_task.after(prerequisites_check_task)
 
     model_to_pvc_task = model_to_pvc_op(model=model_source_task.output)
     model_to_pvc_task.set_caching_options(False)
@@ -295,6 +310,7 @@ def ilab_pipeline(
         size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
+    output_pvc_task.after(prerequisites_check_task)
 
     # Training 1
     # Using pvc_create_task.output as PyTorchJob name since dsl.PIPELINE_* global variables do not template/work in KFP v2

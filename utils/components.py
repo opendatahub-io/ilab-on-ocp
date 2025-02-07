@@ -1,8 +1,17 @@
 # type: ignore
 
-from kfp import dsl
+from typing import Optional
 
-from .consts import RHELAI_IMAGE, RUNTIME_GENERIC_IMAGE, TOOLBOX_IMAGE
+from kfp import dsl
+from kfp.kubernetes import use_config_map_as_volume
+
+from .consts import (
+    JUDGE_CONFIG_MAP,
+    RHELAI_IMAGE,
+    RUNTIME_GENERIC_IMAGE,
+    TEACHER_CONFIG_MAP,
+    TOOLBOX_IMAGE,
+)
 
 
 @dsl.container_component
@@ -298,3 +307,352 @@ def ilab_importer_op(repository: str, release: str, base_model: dsl.Output[dsl.M
             f"ilab --config=DEFAULT model download --repository {repository} --release {release} --model-dir {base_model.path}"
         ],
     )
+
+
+@dsl.component(base_image=RUNTIME_GENERIC_IMAGE)
+def test_model_connection(secret_name: str):
+    import base64
+    import json
+    import os
+    import sys
+    import time
+
+    import requests
+    from kubernetes import client, config
+    from kubernetes.client.rest import ApiException
+
+    config.load_incluster_config()
+
+    model_endpoint = ""
+    model_name = ""
+    model_api_key = ""
+    with open(
+        "/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r"
+    ) as namespace_path:
+        namespace = namespace_path.readline()
+
+    with client.ApiClient() as api_client:
+        core_api = client.CoreV1Api(api_client)
+
+        try:
+            secret = core_api.read_namespaced_secret(secret_name, namespace)
+            print(f"Reading secret {secret_name} data...")
+            model_api_key = base64.b64decode(secret.data["api_key"]).decode("utf-8")
+            model_name = base64.b64decode(secret.data["model_name"]).decode("utf-8")
+            model_endpoint = base64.b64decode(secret.data["endpoint"]).decode("utf-8")
+        except (ApiException, KeyError) as e:
+            print(f"""
+            ############################################ ERROR #####################################################
+            # Error reading {secret_name}. Ensure you created a secret with this name in namespace {namespace} and #
+            # has 'api_key', 'model_name', and 'endpoint' present                                                  #
+            ########################################################################################################
+            """)
+            sys.exit(1)
+
+    request_auth = {"Authorization": f"Bearer {model_api_key}"}
+    request_body = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": "tell me a funny joke."}],
+    }
+    # Make 3 attempts
+    for i in range(1, 3):
+        resp = requests.post(
+            f"{model_endpoint}/chat/completions",
+            headers=request_auth,
+            data=json.dumps(request_body),
+            verify=os.environ["SDG_CA_CERT_PATH"],
+        )
+        if resp.status_code != 200:
+            print(f"Model Server {model_name} is not available. Attempt {i}/3...")
+            time.sleep(5)
+        else:
+            print(f"""
+            ################### INFO #######################
+            # Model Server {model_name} is up and running. #
+            ################################################
+            """)
+            return
+    print(f"""
+    ############################################ ERROR ####################################################
+    # Model Server {model_name} is unavailable. Ensure the model is up and it is ready to serve requests. #
+    #######################################################################################################
+    """)
+    sys.exit(1)
+
+
+@dsl.component(base_image=RUNTIME_GENERIC_IMAGE)
+def test_model_registry(
+    model_registry_endpoint: Optional[str],
+    model_name: Optional[str],
+    model_version: Optional[str],
+):
+    import sys
+    import urllib
+
+    from model_registry import ModelRegistry
+    from model_registry.exceptions import StoreError
+
+    if not model_registry_endpoint:
+        print(f"""
+        ########################### INFO ##############################
+        # Model Registry endpoint is not provided. Skipping this step #
+        ###############################################################
+        """)
+
+    try:
+        # Extract the port out of the URL because the ModelRegistry client expects those as separate arguments.
+        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)
+        model_registry_api_url_port = model_registry_api_url_parsed.port
+
+        if model_registry_api_url_port:
+            model_registry_api_server_address = model_registry_endpoint.replace(
+                model_registry_api_url_parsed.netloc,
+                model_registry_api_url_parsed.hostname,
+            )
+        else:
+            if model_registry_api_url_parsed.scheme == "http":
+                model_registry_api_url_port = 80
+            else:
+                model_registry_api_url_port = 443
+
+            model_registry_api_server_address = model_registry_endpoint
+
+        if not model_registry_api_url_parsed.scheme:
+            model_registry_api_server_address = (
+                "https://" + model_registry_api_server_address
+            )
+
+        with open(
+            "/var/run/secrets/kubernetes.io/serviceaccount/token", "r"
+        ) as token_file:
+            token = token_file.readline()
+
+        registry = ModelRegistry(
+            server_address=model_registry_api_server_address,
+            port=model_registry_api_url_port,
+            author="InstructLab Pipeline",
+            user_token=token,
+        )
+        if registry.get_model_version(model_name, model_version) is not None:
+            print(f"""
+            ###################################################### ERROR ######################################################
+            # The version {model_version} for model {model_name} is already registered. You cannot overwrite a model version. #
+            ###################################################################################################################
+            """)
+            sys.exit(1)
+    except StoreError as store:
+        # The model has no versions registered.
+        # Do nothing, just to avoid this exception to return failure
+        print(f"""
+        ########### INFO ##############
+        # Model Registry is available #
+        ###############################
+        """)
+        sys.exit(0)
+    except Exception as e:
+        print(f"""
+        ############# ERROR ###############
+        # Model Registry is not available #
+        ###################################
+        """)
+        raise
+
+
+@dsl.component(base_image=RUNTIME_GENERIC_IMAGE)
+def test_training_operator():
+    import sys
+
+    from kubernetes import client, config
+    from kubernetes.client.rest import ApiException
+
+    with open(
+        "/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r"
+    ) as namespace_path:
+        namespace = namespace_path.readline()
+    config.load_incluster_config()
+
+    with client.ApiClient() as api_client:
+        api_instance = client.CustomObjectsApi(api_client)
+
+        group = "kubeflow.org"
+        version = "v1"
+        plural = "pytorchjobs"
+
+        try:
+            api_response = api_instance.list_namespaced_custom_object(
+                group, version, namespace, plural
+            )
+            print("""
+            ######################### INFO ###########################
+            # Kubeflow Training Operator PyTorchJob CRD is available #
+            ##########################################################
+            """)
+        except ApiException as e:
+            print("""
+            #################################################### ERROR ######################################################################
+            # Kubeflow Training Operator PyTorchJob CRD is unavailable. Ensure your OpenShift AI installation has Training Operator enabled #
+            #################################################################################################################################
+            """)
+            sys.exit(1)
+
+
+@dsl.component(base_image=RUNTIME_GENERIC_IMAGE)
+def test_oci_model(output_oci_model_uri: str, output_oci_registry_secret: str):
+    import base64
+    import json
+    import sys
+
+    from kubernetes import client, config
+    from kubernetes.client.rest import ApiException
+
+    with open(
+        "/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r"
+    ) as namespace_path:
+        namespace = namespace_path.readline()
+    config.load_incluster_config()
+
+    if output_oci_model_uri is None:
+        print(f"""
+        ############################## INFO ##################################
+        # Parameter output_oci_model_uri not provided. Skipping this step... #
+        ######################################################################
+        """)
+        sys.exit(0)
+
+    # Extract from sdg_base_model parameter the registry name
+    registry_name = output_oci_model_uri.replace("oci://", "").split("/")[0]
+
+    with client.ApiClient() as api_client:
+        core_api = client.CoreV1Api(api_client)
+        try:
+            secret = core_api.read_namespaced_secret(
+                output_oci_registry_secret, namespace
+            )
+            print(f"Reading secret {output_oci_registry_secret} data...")
+            if secret.type == "kubernetes.io/dockerconfigjson":
+                # handle authentication if secret provided is kubernetes.io/dockerconfigjson
+                docker_config_json = json.loads(
+                    base64.b64decode(secret.data[".dockerconfigjson"]).decode("utf-8")
+                )
+                print(f"""
+                ############## INFO #################
+                # OCI Secret has auth token present #
+                #####################################
+                """)
+            elif secret.type == "kubernetes.io/dockercfg":
+                # handle authentication if secret provided is kubernetes.io/dockercfg
+                dockercfg_json = json.loads(
+                    base64.b64decode(secret.data[".dockercfg"]).decode("utf-8")
+                )
+                print(f"""
+                ############## INFO #################
+                # OCI Secret has auth token present #
+                #####################################
+                """)
+        except ApiException as e:
+            print(f"""
+            ############################################## ERROR #################################################################
+            # Secret {output_oci_registry_secret} does not exist. Ensure you created a secret with this name in namespace {namespace} #
+            ######################################################################################################################
+            """)
+            sys.exit(1)
+        except Exception as e:
+            print(f"""
+            ################## ERROR ##################
+            # Failed to check oci model and/or secret #
+            ###########################################
+            """)
+            raise
+
+
+@dsl.container_component
+def test_taxonomy_repo(sdg_repo_url: str):
+    return dsl.ContainerSpec(
+        RUNTIME_GENERIC_IMAGE,
+        ["/bin/sh", "-c"],
+        [
+            f"""
+            # Increase logging verbosity
+            set -x &&
+
+            # Set Preferred CA Cert
+            if [ -s "$TAXONOMY_CA_CERT_PATH" ]; then
+                export GIT_SSL_NO_VERIFY=false
+                export GIT_SSL_CAINFO="$TAXONOMY_CA_CERT_PATH"
+            elif [ ! -z "$SSL_CERT_DIR" ]; then
+                export GIT_SSL_NO_VERIFY=false
+                export GIT_SSL_CAPATH="$SSL_CERT_DIR"
+            elif [ -s "$SSL_CERT_FILE" ]; then
+                export GIT_SSL_NO_VERIFY=false
+                export GIT_SSL_CAINFO="$SSL_CERT_FILE"
+            fi
+
+            # ls-remote will fail if repo is not valid
+            for i in $(seq 1 5);
+            do
+                git ls-remote {sdg_repo_url} > /dev/null && break
+                sleep 5
+            done
+            """
+        ],
+    )
+
+
+@dsl.pipeline(display_name="Prerequisite check")
+def prerequisites_check_op(
+    sdg_repo_url: str,
+    output_oci_registry_secret: str,
+    eval_judge_secret: str,
+    sdg_teacher_secret: str,
+    output_oci_model_uri: str,
+    output_model_registry_api_url: str,
+    output_model_name: str,
+    output_model_version: str,
+):
+    """
+    Pre-validation checks for the InstructLab pipeline.
+    """
+    import os
+
+    ## Validate judge information
+    test_judge_model_op = test_model_connection(secret_name=eval_judge_secret)
+    use_config_map_as_volume(
+        test_judge_model_op, JUDGE_CONFIG_MAP, mount_path="/tmp/cert"
+    )
+    test_judge_model_op.set_env_variable(
+        "SDG_CA_CERT_PATH", os.path.join("/tmp/cert", "ca.crt")
+    )
+    test_judge_model_op.set_caching_options(False)
+
+    ## Validate teacher information
+    test_teacher_model_op = test_model_connection(secret_name=sdg_teacher_secret)
+    use_config_map_as_volume(
+        test_teacher_model_op, TEACHER_CONFIG_MAP, mount_path="/tmp/cert"
+    )
+    test_teacher_model_op.set_env_variable(
+        "SDG_CA_CERT_PATH", os.path.join("/tmp/cert", "ca.crt")
+    )
+    test_teacher_model_op.set_caching_options(False)
+
+    # Validate Model Registry configuration
+    test_model_registry_op = test_model_registry(
+        model_registry_endpoint=output_model_registry_api_url,
+        model_name=output_model_name,
+        model_version=output_model_version,
+    )
+    test_model_registry_op.set_caching_options(False)
+
+    # Validate Training Operator installation
+    test_training_operator_op = test_training_operator()
+    test_training_operator_op.set_caching_options(False)
+
+    # Validate OCI configuration for pushing the OCI ModelCar
+    test_oci_configuration_op = test_oci_model(
+        output_oci_model_uri=output_oci_model_uri,
+        output_oci_registry_secret=output_oci_registry_secret,
+    )
+    test_oci_configuration_op.set_caching_options(False)
+
+    # Validate git repository
+    test_taxonomy_repo_op = test_taxonomy_repo(sdg_repo_url=sdg_repo_url)
+    test_taxonomy_repo_op.set_caching_options(False)
