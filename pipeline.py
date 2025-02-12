@@ -34,9 +34,11 @@ from utils import (
     ilab_importer_op,
     model_to_pvc_op,
     pvc_to_mmlu_branch_op,
+    extract_tarball_to_pvc_op,
     pvc_to_model_op,
     pvc_to_mt_bench_branch_op,
     pvc_to_mt_bench_op,
+    mock_op,
 )
 from utils.consts import RHELAI_IMAGE
 
@@ -71,6 +73,7 @@ JUDGE_CA_CERT_PATH = "/tmp/cert"
 )
 def ilab_pipeline(
     # SDG phase
+    sdg_pregenerated_tarball: Optional[str] = None,
     sdg_repo_url: str = "https://github.com/instructlab/taxonomy.git",
     sdg_repo_branch: Optional[str] = None,
     sdg_repo_pr: Optional[
@@ -109,6 +112,7 @@ def ilab_pipeline(
     """InstructLab pipeline
 
     Args:
+        sdg_pregenerated_tarball: SDG parameter.  Reference to a tarball that contains pre-generated SDG data (allows user to skip SDG step)
         sdg_repo_url: SDG parameter. Points to a taxonomy git repository
         sdg_repo_branch: SDG parameter. Points to a branch within the taxonomy git repository. If set, has priority over sdg_repo_pr
         sdg_repo_pr: SDG parameter. Points to a pull request against the taxonomy git repository
@@ -143,18 +147,71 @@ def ilab_pipeline(
         k8s_storage_class_name: A Kubernetes StorageClass name for persistent volumes. Selected StorageClass must support RWX PersistentVolumes.
     """
 
-    # SDG stage
+    # Switches
+    SKIP_SDG = os.getenv("ILAB_SKIP_SDG")
+    SKIP_DATA_PROCESSING = os.getenv("ILAB_SKIP_DATA_PROCESSING")
+    SKIP_TRAINING_PHASE_1 = os.getenv("ILAB_SKIP_TRAINING_PHASE_1")
+    SKIP_TRAINING_PHASE_2 = os.getenv("ILAB_SKIP_TRAINING_PHASE_2")
+    SKIP_EVAL_MTBENCH = os.getenv("ILAB_SKIP_EVAL_MTBENCH")
+    SKIP_EVAL_FINAL = os.getenv("ILAB_SKIP_EVAL_FINAL")
+    SKIP_UPLOAD_RESULT_MODEL = os.getenv("ILAB_SKIP_UPLOAD_RESULT_MODEL")
+    SKIP_UPLOAD_METRICS = os.getenv("ILAB_SKIP_UPLOAD_METRICS")
+    SKIP_CLEANUP_PVCS = os.getenv("ILAB_SKIP_CLEANUP_PVCS")
+
+    # Create PVCs
     sdg_input_pvc_task = CreatePVC(
         pvc_name_suffix="-sdg",
         access_modes=["ReadWriteMany"],
         size="10Gi",
         storage_class_name=k8s_storage_class_name,
     )
-    git_clone_task = git_clone_op(
-        repo_branch=sdg_repo_branch,
-        repo_pr=sdg_repo_pr if sdg_repo_pr and sdg_repo_pr > 0 else None,
-        repo_url=sdg_repo_url,
+    model_pvc_task = CreatePVC(
+        pvc_name_suffix="-model-cache",
+        access_modes=["ReadWriteMany"],
+        size="100Gi",
+        storage_class_name=k8s_storage_class_name,
     )
+    output_pvc_task = CreatePVC(
+        pvc_name_suffix="-output",
+        access_modes=["ReadWriteMany"],
+        size="100Gi",
+        storage_class_name=k8s_storage_class_name,
+    )
+
+    # SDG stage
+    if SKIP_SDG:
+        git_clone_task = mock_op()
+        taxonomy_to_artifact_task = mock_op()
+        sdg_to_artifact_task = mock_op()
+
+        # Use pregenerated SDG
+        sdg_source_s3_task = dsl.importer(
+            artifact_uri=sdg_pregenerated_tarball,
+            artifact_class=dsl.Dataset,
+            reimport=True,
+        )
+        sdg_source_s3_task.set_caching_options(False)
+        sdg_task = extract_tarball_to_pvc_op(tarball_location=sdg_source_s3_task.output)
+        sdg_task.after(sdg_source_s3_task)
+    else:
+        git_clone_task = git_clone_op(
+            repo_branch=sdg_repo_branch,
+            repo_pr=sdg_repo_pr if sdg_repo_pr and sdg_repo_pr > 0 else None,
+            repo_url=sdg_repo_url,
+        )
+        sdg_task = sdg_op(
+            num_instructions_to_generate=sdg_scale_factor,
+            pipeline=sdg_pipeline,
+            repo_branch=sdg_repo_branch,
+            repo_pr=sdg_repo_pr,
+            sdg_sampling_size=sdg_sample_size,
+        )
+        taxonomy_to_artifact_task = taxonomy_to_artifact_op()
+        sdg_to_artifact_task = sdg_to_artifact_op()
+        sdg_task.after(git_clone_task)
+
+
+
     use_config_map_as_volume(
         git_clone_task, TEACHER_CONFIG_MAP, mount_path=TAXONOMY_CA_CERT_PATH
     )
@@ -169,25 +226,19 @@ def ilab_pipeline(
     )
     git_clone_task.set_caching_options(False)
 
-    sdg_task = sdg_op(
-        num_instructions_to_generate=sdg_scale_factor,
-        pipeline=sdg_pipeline,
-        repo_branch=sdg_repo_branch,
-        repo_pr=sdg_repo_pr,
-        sdg_sampling_size=sdg_sample_size,
-    )
+
     sdg_task.set_env_variable("HOME", "/tmp")
     sdg_task.set_env_variable("HF_HOME", "/tmp")
     use_config_map_as_env(
         sdg_task, TEACHER_CONFIG_MAP, dict(endpoint="endpoint", model="model")
     )
     use_secret_as_env(sdg_task, TEACHER_SECRET, {"api_key": "api_key"})
-    use_config_map_as_volume(sdg_task, TEACHER_CONFIG_MAP, mount_path=SDG_CA_CERT_PATH)
+    use_config_map_as_volume(
+        sdg_task, TEACHER_CONFIG_MAP, mount_path=SDG_CA_CERT_PATH
+    )
     sdg_task.set_env_variable(
         SDG_CA_CERT_ENV_VAR_NAME, os.path.join(SDG_CA_CERT_PATH, SDG_CA_CERT_CM_KEY)
     )
-
-    sdg_task.after(git_clone_task)
     mount_pvc(
         task=sdg_task,
         pvc_name=sdg_input_pvc_task.output,
@@ -196,14 +247,12 @@ def ilab_pipeline(
     sdg_task.set_caching_options(False)
 
     # Upload "sdg" and "taxonomy" artifacts to S3 without blocking the rest of the workflow
-    taxonomy_to_artifact_task = taxonomy_to_artifact_op()
     taxonomy_to_artifact_task.after(git_clone_task, sdg_task)
     mount_pvc(
         task=taxonomy_to_artifact_task,
         pvc_name=sdg_input_pvc_task.output,
         mount_path="/data",
     )
-    sdg_to_artifact_task = sdg_to_artifact_op()
     sdg_to_artifact_task.after(git_clone_task, sdg_task)
     mount_pvc(
         task=sdg_to_artifact_task,
@@ -211,29 +260,48 @@ def ilab_pipeline(
         mount_path="/data",
     )
 
-    # uncomment if updating image with same tag
-    # set_image_pull_policy(sdg_task, "Always")
 
     # Training stage
+    #### Data processing
     model_source_s3_task = dsl.importer(
         artifact_uri=sdg_base_model, artifact_class=dsl.Model
     )
 
-    model_pvc_task = CreatePVC(
-        pvc_name_suffix="-model-cache",
-        access_modes=["ReadWriteMany"],
-        size="100Gi",
-        storage_class_name=k8s_storage_class_name,
-    )
-
     model_to_pvc_task = model_to_pvc_op(model=model_source_s3_task.output)
+
     model_to_pvc_task.set_caching_options(False)
     mount_pvc(
         task=model_to_pvc_task, pvc_name=model_pvc_task.output, mount_path="/model"
     )
 
-    # Data processing
-    data_processing_task = data_processing_op(max_batch_len=sdg_max_batch_len)
+    if SKIP_DATA_PROCESSING:
+        if SKIP_SDG:
+            data_processing_source_s3_task = dsl.importer(
+                artifact_uri=sdg_pregenerated_tarball,
+                artifact_class=dsl.Dataset,
+                reimport=True,
+            )
+            data_processing_source_s3_task.set_caching_options(False)
+            data_processing_task = extract_tarball_to_pvc_op(tarball_location=data_processing_source_s3_task.output)
+            data_processing_task.after(data_processing_source_s3_task)
+        else:
+            data_processing_task = mock_op()
+            data_processing_task.after(model_to_pvc_task, sdg_task)    
+
+        skills_processed_data_to_artifact_task = mock_op()
+        knowledge_processed_data_to_artifact_task = mock_op()
+
+    else:
+        data_processing_task = data_processing_op(max_batch_len=sdg_max_batch_len)
+        data_processing_task.after(model_to_pvc_task, sdg_task)
+
+        # Upload "skills_processed_data" and "knowledge_processed_data" artifacts to S3 without blocking the rest of the workflow
+        skills_processed_data_to_artifact_task = skills_processed_data_to_artifact_op()
+
+        knowledge_processed_data_to_artifact_task = (
+            knowledge_processed_data_to_artifact_op()
+        )
+
     mount_pvc(
         task=data_processing_task,
         pvc_name=model_pvc_task.output,
@@ -244,12 +312,9 @@ def ilab_pipeline(
         pvc_name=sdg_input_pvc_task.output,
         mount_path="/data",
     )
-    data_processing_task.after(model_to_pvc_task, sdg_task)
     data_processing_task.set_caching_options(False)
     data_processing_task.set_env_variable("XDG_CACHE_HOME", "/tmp")
 
-    # Upload "skills_processed_data" and "knowledge_processed_data" artifacts to S3 without blocking the rest of the workflow
-    skills_processed_data_to_artifact_task = skills_processed_data_to_artifact_op()
     skills_processed_data_to_artifact_task.after(data_processing_task)
     mount_pvc(
         task=skills_processed_data_to_artifact_task,
@@ -257,9 +322,7 @@ def ilab_pipeline(
         mount_path="/data",
     )
     skills_processed_data_to_artifact_task.set_caching_options(False)
-    knowledge_processed_data_to_artifact_task = (
-        knowledge_processed_data_to_artifact_op()
-    )
+
     knowledge_processed_data_to_artifact_task.after(data_processing_task)
     mount_pvc(
         task=knowledge_processed_data_to_artifact_task,
@@ -268,71 +331,81 @@ def ilab_pipeline(
     )
     knowledge_processed_data_to_artifact_task.set_caching_options(False)
 
-    output_pvc_task = CreatePVC(
-        pvc_name_suffix="-output",
-        access_modes=["ReadWriteMany"],
-        size="100Gi",
-        storage_class_name=k8s_storage_class_name,
-    )
+    #### Training 1
+    if SKIP_TRAINING_PHASE_1:
+        training_phase_1_model_task = dsl.importer(
+        artifact_uri=sdg_base_model, artifact_class=dsl.Model
+        )
+        training_phase_1_model_task.set_caching_options(False)
+        mount_pvc(
+            task=training_phase_1_model_task, pvc_name=model_pvc_task.output, mount_path="/output/ph"
+        )
 
-    # Training 1
-    # Using pvc_create_task.output as PyTorchJob name since dsl.PIPELINE_* global variables do not template/work in KFP v2
-    # https://github.com/kubeflow/pipelines/issues/10453
-    training_phase_1 = pytorch_job_launcher_op(
-        model_pvc_name=model_pvc_task.output,
-        input_pvc_name=sdg_input_pvc_task.output,
-        name_suffix=sdg_input_pvc_task.output,
-        output_pvc_name=output_pvc_task.output,
-        phase_num=1,
-        base_image=RHELAI_IMAGE,
-        nproc_per_node=train_nproc_per_node,
-        nnodes=train_nnodes,
-        num_epochs=train_num_epochs_phase_1,
-        effective_batch_size=train_effective_batch_size_phase_1,
-        learning_rate=train_learning_rate_phase_1,
-        num_warmup_steps=train_num_warmup_steps_phase_1,
-        save_samples=train_save_samples,
-        max_batch_len=train_max_batch_len,
-        seed=train_seed,
-    )
+        training_phase_1 = model_to_pvc_op(model=model_source_s3_task.output)
+
+    else:
+        # Using pvc_create_task.output as PyTorchJob name since dsl.PIPELINE_* global variables do not template/work in KFP v2
+        # https://github.com/kubeflow/pipelines/issues/10453
+        training_phase_1 = pytorch_job_launcher_op(
+            model_pvc_name=model_pvc_task.output,
+            input_pvc_name=sdg_input_pvc_task.output,
+            name_suffix=sdg_input_pvc_task.output,
+            output_pvc_name=output_pvc_task.output,
+            phase_num=1,
+            base_image=RHELAI_IMAGE,
+            nproc_per_node=train_nproc_per_node,
+            nnodes=train_nnodes,
+            num_epochs=train_num_epochs_phase_1,
+            effective_batch_size=train_effective_batch_size_phase_1,
+            learning_rate=train_learning_rate_phase_1,
+            num_warmup_steps=train_num_warmup_steps_phase_1,
+            save_samples=train_save_samples,
+            max_batch_len=train_max_batch_len,
+            seed=train_seed,
+        )
     training_phase_1.after(data_processing_task, model_to_pvc_task)
     training_phase_1.set_caching_options(False)
 
     #### Train 2
-    training_phase_2 = pytorch_job_launcher_op(
-        model_pvc_name=model_pvc_task.output,
-        input_pvc_name=sdg_input_pvc_task.output,
-        name_suffix=sdg_input_pvc_task.output,
-        output_pvc_name=output_pvc_task.output,
-        phase_num=2,
-        base_image=RHELAI_IMAGE,
-        nproc_per_node=train_nproc_per_node,
-        nnodes=train_nnodes,
-        num_epochs=train_num_epochs_phase_2,
-        effective_batch_size=train_effective_batch_size_phase_2,
-        learning_rate=train_learning_rate_phase_2,
-        num_warmup_steps=train_num_warmup_steps_phase_2,
-        save_samples=train_save_samples,
-        max_batch_len=train_max_batch_len,
-        seed=train_seed,
-    )
+    if SKIP_TRAINING_PHASE_2:
+        training_phase_2 = mock_op()
+    else:
+        training_phase_2 = pytorch_job_launcher_op(
+            model_pvc_name=model_pvc_task.output,
+            input_pvc_name=sdg_input_pvc_task.output,
+            name_suffix=sdg_input_pvc_task.output,
+            output_pvc_name=output_pvc_task.output,
+            phase_num=2,
+            base_image=RHELAI_IMAGE,
+            nproc_per_node=train_nproc_per_node,
+            nnodes=train_nnodes,
+            num_epochs=train_num_epochs_phase_2,
+            effective_batch_size=train_effective_batch_size_phase_2,
+            learning_rate=train_learning_rate_phase_2,
+            num_warmup_steps=train_num_warmup_steps_phase_2,
+            save_samples=train_save_samples,
+            max_batch_len=train_max_batch_len,
+            seed=train_seed,
+        )
 
     training_phase_2.set_caching_options(False)
     training_phase_2.after(training_phase_1)
-
     mount_pvc(
         task=training_phase_2,
         pvc_name=output_pvc_task.output,
         mount_path="/output",
     )
 
-    # MT_Bench Evaluation of models
-
-    run_mt_bench_task = run_mt_bench_op(
-        models_folder="/output/phase_2/model/hf_format",
-        max_workers=mt_bench_max_workers,
-        merge_system_user_message=mt_bench_merge_system_user_message,
-    )
+    # Evaluation Stage
+    #### MT_Bench Evaluation of models
+    if SKIP_EVAL_MTBENCH:
+        run_mt_bench_task = mock_op()
+    else:
+        run_mt_bench_task = run_mt_bench_op(
+            models_folder="/output/phase_2/model/hf_format",
+            max_workers=mt_bench_max_workers,
+            merge_system_user_message=mt_bench_merge_system_user_message,
+        )
     mount_pvc(
         task=run_mt_bench_task,
         pvc_name=output_pvc_task.output,
@@ -362,17 +435,22 @@ def ilab_pipeline(
     # uncomment if updating image with same tag
     # set_image_pull_policy(run_mt_bench_task, "Always")
 
-    final_eval_task = run_final_eval_op(
-        candidate_model="/output/phase_2/model/hf_format/candidate_model",
-        # TODO: DO we need both candidate_branch and base_branch
-        base_branch=sdg_repo_branch,
-        candidate_branch=sdg_repo_branch,
-        base_model_dir="/model/",
-        max_workers=final_eval_max_workers,
-        merge_system_user_message=final_eval_merge_system_user_message,
-        few_shots=final_eval_few_shots,
-        batch_size=final_eval_batch_size,
-    )
+
+    #### Final Evaluation
+    if SKIP_EVAL_FINAL:
+        final_eval_task = mock_op()
+    else:
+        final_eval_task = run_final_eval_op(
+            candidate_model="/output/phase_2/model/hf_format/candidate_model",
+            # TODO: DO we need both candidate_branch and base_branch
+            base_branch=sdg_repo_branch,
+            candidate_branch=sdg_repo_branch,
+            base_model_dir="/model/",
+            max_workers=final_eval_max_workers,
+            merge_system_user_message=final_eval_merge_system_user_message,
+            few_shots=final_eval_few_shots,
+            batch_size=final_eval_batch_size,
+        )
     mount_pvc(
         task=final_eval_task, pvc_name=output_pvc_task.output, mount_path="/output"
     )
@@ -414,9 +492,19 @@ def ilab_pipeline(
     final_eval_task.set_accelerator_limit(1)
     final_eval_task.set_caching_options(False)
 
-    output_model_task = pvc_to_model_op(
-        pvc_path="/output/phase_2/model/hf_format/candidate_model",
-    )
+    if SKIP_UPLOAD_RESULT_MODEL:
+        output_model_task = mock_op()
+        output_mt_bench_task = mock_op()
+
+    else:
+        output_model_task = pvc_to_model_op(
+            pvc_path="/output/phase_2/model/hf_format/candidate_model",
+        )
+
+        output_mt_bench_task = pvc_to_mt_bench_op(
+            pvc_path="/output/mt_bench_data.json",
+        )
+
     output_model_task.after(run_mt_bench_task)
     output_model_task.set_caching_options(False)
     mount_pvc(
@@ -425,9 +513,6 @@ def ilab_pipeline(
         mount_path="/output",
     )
 
-    output_mt_bench_task = pvc_to_mt_bench_op(
-        pvc_path="/output/mt_bench_data.json",
-    )
     output_mt_bench_task.after(run_mt_bench_task)
     output_mt_bench_task.set_caching_options(False)
 
@@ -437,9 +522,19 @@ def ilab_pipeline(
         mount_path="/output",
     )
 
-    output_mt_bench_branch_task = pvc_to_mt_bench_branch_op(
-        pvc_path="/output/mt_bench_branch/mt_bench_branch_data.json",
-    )
+    if SKIP_UPLOAD_METRICS:
+        output_mt_bench_branch_task = mock_op()
+        output_mmlu_branch_task = mock_op()
+        generate_metrics_report_task = mock_op()
+    else:
+        output_mt_bench_branch_task = pvc_to_mt_bench_branch_op(
+            pvc_path="/output/mt_bench_branch/mt_bench_branch_data.json",
+        )
+        output_mmlu_branch_task = pvc_to_mmlu_branch_op(
+            pvc_path="/output/mmlu_branch/mmlu_branch_data.json",
+        )
+        generate_metrics_report_task = generate_metrics_report_op()
+
     output_mt_bench_branch_task.after(final_eval_task)
     output_mt_bench_branch_task.set_caching_options(False)
 
@@ -449,9 +544,6 @@ def ilab_pipeline(
         mount_path="/output",
     )
 
-    output_mmlu_branch_task = pvc_to_mmlu_branch_op(
-        pvc_path="/output/mmlu_branch/mmlu_branch_data.json",
-    )
     output_mmlu_branch_task.after(final_eval_task)
     output_mmlu_branch_task.set_caching_options(False)
 
@@ -461,13 +553,6 @@ def ilab_pipeline(
         mount_path="/output",
     )
 
-    sdg_pvc_delete_task = DeletePVC(pvc_name=sdg_input_pvc_task.output)
-    sdg_pvc_delete_task.after(final_eval_task)
-
-    model_pvc_delete_task = DeletePVC(pvc_name=model_pvc_task.output)
-    model_pvc_delete_task.after(final_eval_task)
-
-    generate_metrics_report_task = generate_metrics_report_op()
     generate_metrics_report_task.after(final_eval_task)
     generate_metrics_report_task.set_caching_options(False)
     mount_pvc(
@@ -476,14 +561,21 @@ def ilab_pipeline(
         mount_path="/output",
     )
 
-    output_pvc_delete_task = DeletePVC(pvc_name=output_pvc_task.output)
-    output_pvc_delete_task.after(
-        output_model_task,
-        output_mt_bench_task,
-        output_mmlu_branch_task,
-        output_mt_bench_branch_task,
-        generate_metrics_report_task,
-    )
+    if not SKIP_CLEANUP_PVCS:
+        sdg_pvc_delete_task = DeletePVC(pvc_name=sdg_input_pvc_task.output)
+        sdg_pvc_delete_task.after(final_eval_task)
+
+        model_pvc_delete_task = DeletePVC(pvc_name=model_pvc_task.output)
+        model_pvc_delete_task.after(final_eval_task)
+
+        output_pvc_delete_task = DeletePVC(pvc_name=output_pvc_task.output)
+        output_pvc_delete_task.after(
+            output_model_task,
+            output_mt_bench_task,
+            output_mmlu_branch_task,
+            output_mt_bench_branch_task,
+            generate_metrics_report_task,
+        )
 
     return
 
@@ -533,7 +625,7 @@ def cli(ctx: click.Context):
 
 def generate_pipeline():
     pipelines = [
-        (ilab_pipeline, PIPELINE_FILE_NAME),
+        (ilab_pipeline, os.getenv("ILAB_PIPELINE_FILE_NAME", PIPELINE_FILE_NAME)),
         (import_base_model_pipeline, IMPORTER_PIPELINE_FILE_NAME),
     ]
 
