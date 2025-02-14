@@ -1223,26 +1223,33 @@ deploymentSpec:
           \    import torch\n    from instructlab.eval.mmlu import MMLUBranchEvaluator\n\
           \    from instructlab.eval.mt_bench import MTBenchBranchEvaluator\n    from\
           \ instructlab.model.evaluate import qa_pairs_to_qna_to_avg_scores, sort_score\n\
-          \n    judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls\
-          \ = os.path.exists(judge_ca_cert_path) and (\n        os.path.getsize(judge_ca_cert_path)\
-          \ > 0\n    )\n    judge_http_client = httpx.Client(verify=judge_ca_cert_path)\
-          \ if use_tls else None\n\n    print(\"Starting Final Eval...\")\n\n    def\
-          \ launch_vllm(\n        model_path: str, gpu_count: int, retries: int =\
-          \ 120, delay: int = 10\n    ) -> tuple:\n        import subprocess\n   \
-          \     import sys\n        import time\n\n        import requests\n     \
-          \   from instructlab.model.backends.common import free_tcp_ipv4_port\n\n\
-          \        free_port = free_tcp_ipv4_port(\"127.0.0.1\")\n        port = str(free_port)\n\
-          \        vllm_server = f\"http://127.0.0.1:{port}/v1\"\n\n        command\
-          \ = [\n            sys.executable,\n            \"-m\",\n            \"\
-          vllm.entrypoints.openai.api_server\",\n            \"--port\",\n       \
-          \     port,\n            \"--model\",\n            model_path,\n       \
-          \ ]\n        if gpu_count > 0:\n            command += [\n             \
-          \   \"--tensor-parallel-size\",\n                str(gpu_count),\n     \
-          \       ]\n\n        process = subprocess.Popen(args=command)\n\n      \
-          \  print(f\"Waiting for vLLM server to start at {vllm_server}...\")\n\n\
-          \        for attempt in range(retries):\n            try:\n            \
-          \    response = requests.get(f\"{vllm_server}/models\", timeout=10)\n  \
-          \              if response.status_code == 200:\n                    print(f\"\
+          \n    judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    dsp_ca_cert_path\
+          \ = os.getenv(\"SSL_CERT_FILE\")\n    dsp_ca_cert_dir = os.getenv(\"SSL_CERT_DIR\"\
+          )\n\n    dsp_cert_dir_defined = dsp_ca_cert_dir is not None\n    dsp_ca_exists\
+          \ = (\n        dsp_ca_cert_path is not None\n        and os.path.isfile(dsp_ca_cert_path)\n\
+          \        and (os.path.getsize(dsp_ca_cert_path) > 0)\n    )\n    judge_ca_exists\
+          \ = (\n        judge_ca_cert_path is not None\n        and os.path.isfile(judge_ca_cert_path)\n\
+          \        and (os.path.getsize(judge_ca_cert_path) > 0)\n    )\n\n    use_tls\
+          \ = dsp_cert_dir_defined or dsp_ca_exists or judge_ca_exists\n\n    # Use\
+          \ Judge CA Cert if explicitly defined, otherwise use system default CA Certs\n\
+          \    ca_cert_path = judge_ca_cert_path if judge_ca_exists else True\n  \
+          \  judge_http_client = httpx.Client(verify=ca_cert_path) if use_tls else\
+          \ None\n\n    print(\"Starting Final Eval...\")\n\n    def launch_vllm(\n\
+          \        model_path: str, gpu_count: int, retries: int = 120, delay: int\
+          \ = 10\n    ) -> tuple:\n        import subprocess\n        import sys\n\
+          \        import time\n\n        import requests\n        from instructlab.model.backends.common\
+          \ import free_tcp_ipv4_port\n\n        free_port = free_tcp_ipv4_port(\"\
+          127.0.0.1\")\n        port = str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\
+          \n\n        command = [\n            sys.executable,\n            \"-m\"\
+          ,\n            \"vllm.entrypoints.openai.api_server\",\n            \"--port\"\
+          ,\n            port,\n            \"--model\",\n            model_path,\n\
+          \        ]\n        if gpu_count > 0:\n            command += [\n      \
+          \          \"--tensor-parallel-size\",\n                str(gpu_count),\n\
+          \            ]\n\n        process = subprocess.Popen(args=command)\n\n \
+          \       print(f\"Waiting for vLLM server to start at {vllm_server}...\"\
+          )\n\n        for attempt in range(retries):\n            try:\n        \
+          \        response = requests.get(f\"{vllm_server}/models\", timeout=10)\n\
+          \                if response.status_code == 200:\n                    print(f\"\
           vLLM server is up and running at {vllm_server}.\")\n                   \
           \ return process, vllm_server\n            except requests.ConnectionError:\n\
           \                pass\n\n            print(\n                f\"Server not\
@@ -1539,17 +1546,25 @@ deploymentSpec:
           \        judge_api_key, judge_model_name, judge_endpoint = fetch_secret(\n\
           \            judge_secret_name, [\"api_token\", \"model_name\", \"endpoint\"\
           ]\n        )\n        print(\"Eval Judge secret data retrieved.\")\n\n \
-          \   judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls\
-          \ = os.path.exists(judge_ca_cert_path) and (\n        os.path.getsize(judge_ca_cert_path)\
-          \ > 0\n    )\n    judge_http_client = httpx.Client(verify=judge_ca_cert_path)\
-          \ if use_tls else None\n\n    def launch_vllm(\n        model_path: str,\
-          \ gpu_count: int, retries: int = 120, delay: int = 10\n    ) -> tuple:\n\
-          \        import subprocess\n        import sys\n        import time\n\n\
-          \        import requests\n        from instructlab.model.backends.common\
-          \ import free_tcp_ipv4_port\n\n        free_port = free_tcp_ipv4_port(\"\
-          127.0.0.1\")\n        port = str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\
-          \n\n        command = [\n            sys.executable,\n            \"-m\"\
-          ,\n            \"vllm.entrypoints.openai.api_server\",\n            \"--port\"\
+          \   judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    dsp_ca_cert_path\
+          \ = os.getenv(\"SSL_CERT_FILE\")\n    dsp_ca_cert_dir = os.getenv(\"SSL_CERT_DIR\"\
+          )\n\n    dsp_cert_dir_defined = dsp_ca_cert_dir is not None\n    dsp_ca_exists\
+          \ = (\n        dsp_ca_cert_path is not None\n        and os.path.isfile(dsp_ca_cert_path)\n\
+          \        and (os.path.getsize(dsp_ca_cert_path) > 0)\n    )\n    judge_ca_exists\
+          \ = (\n        judge_ca_cert_path is not None\n        and os.path.isfile(judge_ca_cert_path)\n\
+          \        and (os.path.getsize(judge_ca_cert_path) > 0)\n    )\n\n    use_tls\
+          \ = dsp_cert_dir_defined or dsp_ca_exists or judge_ca_exists\n\n    # Use\
+          \ Judge CA Cert if explicitly defined, otherwise use system default CA Certs\n\
+          \    ca_cert_path = judge_ca_cert_path if judge_ca_exists else True\n  \
+          \  judge_http_client = httpx.Client(verify=ca_cert_path) if use_tls else\
+          \ None\n\n    def launch_vllm(\n        model_path: str, gpu_count: int,\
+          \ retries: int = 120, delay: int = 10\n    ) -> tuple:\n        import subprocess\n\
+          \        import sys\n        import time\n\n        import requests\n  \
+          \      from instructlab.model.backends.common import free_tcp_ipv4_port\n\
+          \n        free_port = free_tcp_ipv4_port(\"127.0.0.1\")\n        port =\
+          \ str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\n\
+          \n        command = [\n            sys.executable,\n            \"-m\",\n\
+          \            \"vllm.entrypoints.openai.api_server\",\n            \"--port\"\
           ,\n            port,\n            \"--model\",\n            model_path,\n\
           \        ]\n        if gpu_count > 0:\n            command += [\n      \
           \          \"--tensor-parallel-size\",\n                str(gpu_count),\n\
@@ -1785,9 +1800,17 @@ deploymentSpec:
           \    print(\"SDG Teacher secret specified, fetching...\")\n        api_key,\
           \ endpoint = fetch_secret(sdg_secret_name, [\"api_token\", \"endpoint\"\
           ])\n        print(\"SDG Teacher secret data retrieved.\")\n\n    sdg_ca_cert_path\
-          \ = os.getenv(\"SDG_CA_CERT_PATH\")\n    use_tls = os.path.exists(sdg_ca_cert_path)\
-          \ and (\n        os.path.getsize(sdg_ca_cert_path) > 0\n    )\n    if use_tls:\n\
-          \        import httpx\n\n        custom_http_client = httpx.Client(verify=sdg_ca_cert_path)\n\
+          \ = os.getenv(\"SDG_CA_CERT_PATH\")\n    dsp_ca_cert_path = os.getenv(\"\
+          SSL_CERT_FILE\")\n    dsp_ca_cert_dir = os.getenv(\"SSL_CERT_DIR\")\n\n\
+          \    dsp_cert_dir_defined = dsp_ca_cert_dir is not None\n    dsp_ca_exists\
+          \ = (\n        dsp_ca_cert_path is not None\n        and os.path.isfile(dsp_ca_cert_path)\n\
+          \        and (os.path.getsize(dsp_ca_cert_path) > 0)\n    )\n    sdg_ca_exists\
+          \ = (\n        sdg_ca_cert_path is not None\n        and os.path.isfile(sdg_ca_cert_path)\n\
+          \        and (os.path.getsize(sdg_ca_cert_path) > 0)\n    )\n\n    use_tls\
+          \ = dsp_cert_dir_defined or dsp_ca_exists or sdg_ca_exists\n\n    if use_tls:\n\
+          \        import httpx\n\n        # Use SDG CA Cert if explicitly defined,\
+          \ otherwise use system default CA Certs\n        ca_cert_path = sdg_ca_cert_path\
+          \ if sdg_ca_exists else True\n        custom_http_client = httpx.Client(verify=ca_cert_path)\n\
           \        client = openai.OpenAI(\n            base_url=endpoint, api_key=api_key,\
           \ http_client=custom_http_client\n        )\n    else:\n        client =\
           \ openai.OpenAI(base_url=endpoint, api_key=api_key)\n\n    taxonomy_base\

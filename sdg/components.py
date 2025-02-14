@@ -22,21 +22,21 @@ def git_clone_op(
             # Increase logging verbosity
             set -x &&
 
-            # Add TLS Parameters if CA Cert exists and is non-zero size
-            ADDITIONAL_CLONE_PARAMS=""
+            # Set Preferred CA Cert
             if [ -s "$TAXONOMY_CA_CERT_PATH" ]; then
-                ADDITIONAL_CLONE_PARAMS="-c http.sslVerify=true -c http.sslCAInfo=$TAXONOMY_CA_CERT_PATH"
+                export GIT_SSL_NO_VERIFY=false
+                export GIT_SSL_CAINFO="$TAXONOMY_CA_CERT_PATH"
+            elif [ ! -z "$SSL_CERT_DIR" ]; then
+                export GIT_SSL_NO_VERIFY=false
+                export GIT_SSL_CAPATH="$SSL_CERT_DIR"
+            elif [ -s "$SSL_CERT_FILE" ]; then
+                export GIT_SSL_NO_VERIFY=false
+                export GIT_SSL_CAINFO="$SSL_CERT_FILE"
             fi
 
             # Clone Taxonomy Repo
-            git clone $ADDITIONAL_CLONE_PARAMS {repo_url} {taxonomy_path} &&
+            git clone {repo_url} {taxonomy_path} &&
             cd {taxonomy_path} &&
-
-            # Run additional configuration if TLS certs provided
-            if [ -s "$TAXONOMY_CA_CERT_PATH" ]; then
-                git config http.sslVerify true &&
-                git config http.sslCAInfo $TAXONOMY_CA_CERT_PATH
-            fi &&
 
             # Checkout and use taxonomy repo branch or PR if specified
             if [ -n "{repo_branch}" ]; then
@@ -296,13 +296,29 @@ def sdg_op(
         print("SDG Teacher secret data retrieved.")
 
     sdg_ca_cert_path = os.getenv("SDG_CA_CERT_PATH")
-    use_tls = os.path.exists(sdg_ca_cert_path) and (
-        os.path.getsize(sdg_ca_cert_path) > 0
+    dsp_ca_cert_path = os.getenv("SSL_CERT_FILE")
+    dsp_ca_cert_dir = os.getenv("SSL_CERT_DIR")
+
+    dsp_cert_dir_defined = dsp_ca_cert_dir is not None
+    dsp_ca_exists = (
+        dsp_ca_cert_path is not None
+        and os.path.isfile(dsp_ca_cert_path)
+        and (os.path.getsize(dsp_ca_cert_path) > 0)
     )
+    sdg_ca_exists = (
+        sdg_ca_cert_path is not None
+        and os.path.isfile(sdg_ca_cert_path)
+        and (os.path.getsize(sdg_ca_cert_path) > 0)
+    )
+
+    use_tls = dsp_cert_dir_defined or dsp_ca_exists or sdg_ca_exists
+
     if use_tls:
         import httpx
 
-        custom_http_client = httpx.Client(verify=sdg_ca_cert_path)
+        # Use SDG CA Cert if explicitly defined, otherwise use system default CA Certs
+        ca_cert_path = sdg_ca_cert_path if sdg_ca_exists else True
+        custom_http_client = httpx.Client(verify=ca_cert_path)
         client = openai.OpenAI(
             base_url=endpoint, api_key=api_key, http_client=custom_http_client
         )

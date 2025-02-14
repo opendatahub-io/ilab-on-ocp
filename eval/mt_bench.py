@@ -79,10 +79,26 @@ def run_mt_bench_op(
         print("Eval Judge secret data retrieved.")
 
     judge_ca_cert_path = os.getenv("JUDGE_CA_CERT_PATH")
-    use_tls = os.path.exists(judge_ca_cert_path) and (
-        os.path.getsize(judge_ca_cert_path) > 0
+    dsp_ca_cert_path = os.getenv("SSL_CERT_FILE")
+    dsp_ca_cert_dir = os.getenv("SSL_CERT_DIR")
+
+    dsp_cert_dir_defined = dsp_ca_cert_dir is not None
+    dsp_ca_exists = (
+        dsp_ca_cert_path is not None
+        and os.path.isfile(dsp_ca_cert_path)
+        and (os.path.getsize(dsp_ca_cert_path) > 0)
     )
-    judge_http_client = httpx.Client(verify=judge_ca_cert_path) if use_tls else None
+    judge_ca_exists = (
+        judge_ca_cert_path is not None
+        and os.path.isfile(judge_ca_cert_path)
+        and (os.path.getsize(judge_ca_cert_path) > 0)
+    )
+
+    use_tls = dsp_cert_dir_defined or dsp_ca_exists or judge_ca_exists
+
+    # Use Judge CA Cert if explicitly defined, otherwise use system default CA Certs
+    ca_cert_path = judge_ca_cert_path if judge_ca_exists else True
+    judge_http_client = httpx.Client(verify=ca_cert_path) if use_tls else None
 
     def launch_vllm(
         model_path: str, gpu_count: int, retries: int = 120, delay: int = 10

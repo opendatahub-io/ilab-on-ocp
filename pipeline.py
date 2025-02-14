@@ -49,7 +49,6 @@ STANDALONE_TEMPLATE_FILE_NAME = "standalone.tpl"
 GENERATED_STANDALONE_FILE_NAME = "standalone.py"
 DEFAULT_REPO_URL = "https://github.com/instructlab/taxonomy.git"
 
-# Model Serving SSL connection
 TAXONOMY_CA_CERT_CM_KEY = "taxonomy-ca.crt"
 TAXONOMY_CA_CERT_ENV_VAR_NAME = "TAXONOMY_CA_CERT_PATH"
 TAXONOMY_CA_CERT_PATH = "/tmp/cert"
