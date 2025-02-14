@@ -51,6 +51,11 @@ GENERATED_STANDALONE_FILE_NAME = "standalone.py"
 DEFAULT_REPO_URL = "https://github.com/instructlab/taxonomy.git"
 
 # Model Serving SSL connection
+DSP_TRUSTED_CA_CONFIG_MAP = "dsp-trusted-ca-dspa"  # TODO(gfrasca): get DSPA name - the dspa in dsp-trusted-ca-dspa is variable
+DSP_TRUSTED_CA_CERT_CM_KEY = "dsp-ca.crt"
+DSP_TRUSTED_CA_CERT_ENV_VAR_NAME = "DSP_TRUSTED_CA_CERT_PATH"
+DSP_TRUSTED_CA_CERT_PATH = "/tmp/cert"
+
 TAXONOMY_CA_CERT_CM_KEY = "taxonomy-ca.crt"
 TAXONOMY_CA_CERT_ENV_VAR_NAME = "TAXONOMY_CA_CERT_PATH"
 TAXONOMY_CA_CERT_PATH = "/tmp/cert"
@@ -162,6 +167,13 @@ def ilab_pipeline(
         TAXONOMY_CA_CERT_ENV_VAR_NAME,
         os.path.join(TAXONOMY_CA_CERT_PATH, TAXONOMY_CA_CERT_CM_KEY),
     )
+    use_config_map_as_volume(
+        git_clone_task, DSP_TRUSTED_CA_CONFIG_MAP, mount_path=DSP_TRUSTED_CA_CERT_PATH
+    )
+    git_clone_task.set_env_variable(
+        DSP_TRUSTED_CA_CERT_ENV_VAR_NAME,
+        os.path.join(DSP_TRUSTED_CA_CERT_PATH, DSP_TRUSTED_CA_CERT_CM_KEY),
+    )
     mount_pvc(
         task=git_clone_task,
         pvc_name=sdg_input_pvc_task.output,
@@ -185,6 +197,10 @@ def ilab_pipeline(
     use_config_map_as_volume(sdg_task, TEACHER_CONFIG_MAP, mount_path=SDG_CA_CERT_PATH)
     sdg_task.set_env_variable(
         SDG_CA_CERT_ENV_VAR_NAME, os.path.join(SDG_CA_CERT_PATH, SDG_CA_CERT_CM_KEY)
+    )
+    use_config_map_as_volume(sdg_task, DSP_TRUSTED_CA_CONFIG_MAP, mount_path=DSP_TRUSTED_CA_CERT_PATH)
+    sdg_task.set_env_variable(
+        DSP_TRUSTED_CA_CERT_ENV_VAR_NAME, os.path.join(DSP_TRUSTED_CA_CERT_PATH, DSP_TRUSTED_CA_CERT_CM_KEY)
     )
 
     sdg_task.after(git_clone_task)
@@ -359,6 +375,14 @@ def ilab_pipeline(
         os.path.join(JUDGE_CA_CERT_PATH, JUDGE_CA_CERT_CM_KEY),
     )
 
+    use_config_map_as_volume(
+        run_mt_bench_task, DSP_TRUSTED_CA_CONFIG_MAP, mount_path=DSP_TRUSTED_CA_CERT_PATH
+    )
+    run_mt_bench_task.set_env_variable(
+        DSP_TRUSTED_CA_CERT_ENV_VAR_NAME,
+        os.path.join(DSP_TRUSTED_CA_CERT_PATH, DSP_TRUSTED_CA_CERT_CM_KEY),
+    )
+
     # uncomment if updating image with same tag
     # set_image_pull_policy(run_mt_bench_task, "Always")
 
@@ -407,6 +431,13 @@ def ilab_pipeline(
     final_eval_task.set_env_variable(
         JUDGE_CA_CERT_ENV_VAR_NAME,
         os.path.join(JUDGE_CA_CERT_PATH, JUDGE_CA_CERT_CM_KEY),
+    )
+    use_config_map_as_volume(
+        final_eval_task, DSP_TRUSTED_CA_CONFIG_MAP, mount_path=DSP_TRUSTED_CA_CERT_PATH
+    )
+    final_eval_task.set_env_variable(
+        DSP_TRUSTED_CA_CERT_ENV_VAR_NAME,
+        os.path.join(DSP_TRUSTED_CA_CERT_PATH, DSP_TRUSTED_CA_CERT_CM_KEY),
     )
 
     final_eval_task.after(run_mt_bench_task)
