@@ -9,6 +9,8 @@ COPY ${SOURCE_CODE} .
 
 USER root
 
+RUN dnf install -y skopeo && dnf clean all
+
 RUN echo "Installing Runtime Dependencies" && \
     pip install --no-cache-dir -r requirements.txt && \
     chgrp -R 0 . && \
