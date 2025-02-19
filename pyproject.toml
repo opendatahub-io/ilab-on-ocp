@@ -10,6 +10,7 @@ dependencies = [
     "kfp-kubernetes>=1.4.0",
     "kfp==2.9.0",
     "kubernetes==30.1.0",
+    "model-registry==0.2.14",
     "olot==0.1.2",
     "pre-commit>=4.0.1",
     "ruff>=0.8.2",
