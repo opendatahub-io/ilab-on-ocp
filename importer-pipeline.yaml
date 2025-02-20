@@ -76,7 +76,7 @@ root:
         isOptional: true
         parameterType: STRING
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.9.0
+sdkVersion: kfp-2.11.0
 ---
 platforms:
   kubernetes:
@@ -88,7 +88,13 @@ platforms:
             - envVar: HF_TOKEN
               secretKey: HF_TOKEN
             secretName: hugging-face-token
+            secretNameParameter:
+              runtimeValue:
+                constant: hugging-face-token
           secretAsVolume:
           - mountPath: /mnt/containers
             optional: false
             secretName: 7033380-ilab-pull-secret
+            secretNameParameter:
+              runtimeValue:
+                constant: 7033380-ilab-pull-secret
