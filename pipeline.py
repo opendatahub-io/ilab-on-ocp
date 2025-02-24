@@ -38,6 +38,7 @@ from utils import (
     pvc_to_mt_bench_branch_op,
     pvc_to_mt_bench_op,
 )
+from utils.components import pre_requisites_check_op
 from utils.consts import RHELAI_IMAGE
 
 TEACHER_CONFIG_MAP = "teacher-server"
@@ -81,6 +82,7 @@ def ilab_pipeline(
     sdg_pipeline: str = "/usr/share/instructlab/sdg/pipelines/agentic",  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L122
     sdg_max_batch_len: int = 5000,  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L334
     sdg_sample_size: float = 1.0,  # FIXME: Not present in default config. Not configurable upstream at this point, capability added via https://github.com/instructlab/sdg/pull/432
+    sdg_oci_secret_name: Optional[str] = "oci-secret",
     # Training phase
     train_nproc_per_node: int = 2,  # FIXME: Not present in default config. Arbitrary value chosen to demonstrate multi-node multi-gpu capabilities. Needs proper reference architecture justification.
     train_nnodes: int = 2,  # FIXME: Not present in default config. Arbitrary value chosen to demonstrate multi-node multi-gpu capabilities. Needs proper reference architecture justification.
@@ -105,6 +107,11 @@ def ilab_pipeline(
     final_eval_merge_system_user_message: bool = False,  # https://github.com/instructlab/instructlab/blob/v0.21.2/src/instructlab/model/evaluate.py#L474
     # Other options
     k8s_storage_class_name: str = "standard",  # FIXME: https://github.com/kubeflow/pipelines/issues/11396, https://issues.redhat.com/browse/RHOAIRFE-470
+    model_registry_endpoint: str = "https://<MODEL-REGISTRY-URL>",
+    judge_model_configmap: str = "judge-server",
+    judge_model_secret: str = "judge-server",
+    teacher_model_configmap: str = "teacher-server",
+    teacher_model_secret: str = "teacher-server",
 ):
     """InstructLab pipeline
 
@@ -117,6 +124,7 @@ def ilab_pipeline(
         sdg_pipeline: SDG parameter. Data generation pipeline to use. Available: 'simple', 'full', or a valid path to a directory of pipeline workflow YAML files. Note that 'full' requires a larger teacher model, Mixtral-8x7b.
         sdg_max_batch_len: SDG parameter. Maximum tokens per gpu for each batch that will be handled in a single step.
         sdg_sample_size: SDG parameter. Represents the sdg skills recipe sampling size as percentage in decimal form.
+        sdg_oci_secret_name: [OPTIONAL] SDG Parameter. The secret name that stores the container registry authentication token.
 
         train_nproc_per_node: Training parameter. Number of GPUs per each node/worker to use for training.
         train_nnodes: Training parameter. Number of nodes/workers to train on.
@@ -141,7 +149,23 @@ def ilab_pipeline(
         final_eval_merge_system_user_message: Final model evaluation parameter for MT Bench Branch. Boolean indicating whether to merge system and user messages (required for Mistral based judges)
 
         k8s_storage_class_name: A Kubernetes StorageClass name for persistent volumes. Selected StorageClass must support RWX PersistentVolumes.
+        model_registry_endpoint: Model Registry hostname used to register the model.
+        judge_model_configmap: Judge Model configuration. The name of the configmap that stores information about Judge model.
+        judge_model_secret: Judge Model configuration. The name of the secret that stores Judge model API key.
+        teacher_model_configmap: Teacher Model configuration. The name of the configmap that stores information about Teacher model.
+        teacher_model_secret: Teacher Model configuration. The name of the secret that stores Teacher model API key.
     """
+    # Pre-requisites check stage
+    pre_requisites_check_task = pre_requisites_check_op(
+        sdg_repo_url=sdg_repo_url,
+        sdg_base_model=sdg_base_model,
+        sdg_oci_secret=sdg_oci_secret_name,
+        judge_cm_name=judge_model_configmap,
+        judge_secret_name=judge_model_secret,
+        teacher_cm_name=teacher_model_configmap,
+        teacher_secret_name=teacher_model_secret,
+        model_registry_endpoint=model_registry_endpoint,
+    )
 
     # SDG stage
     sdg_input_pvc_task = CreatePVC(
@@ -150,6 +174,7 @@ def ilab_pipeline(
         size="10Gi",
         storage_class_name=k8s_storage_class_name,
     )
+    sdg_input_pvc_task.after(pre_requisites_check_task)
     git_clone_task = git_clone_op(
         repo_branch=sdg_repo_branch,
         repo_pr=sdg_repo_pr if sdg_repo_pr and sdg_repo_pr > 0 else None,
@@ -218,6 +243,7 @@ def ilab_pipeline(
     model_source_s3_task = dsl.importer(
         artifact_uri=sdg_base_model, artifact_class=dsl.Model
     )
+    model_source_s3_task.after(pre_requisites_check_task)
 
     model_pvc_task = CreatePVC(
         pvc_name_suffix="-model-cache",
@@ -225,6 +251,7 @@ def ilab_pipeline(
         size="100Gi",
         storage_class_name=k8s_storage_class_name,
     )
+    model_pvc_task.after(pre_requisites_check_task)
 
     model_to_pvc_task = model_to_pvc_op(model=model_source_s3_task.output)
     model_to_pvc_task.set_caching_options(False)
@@ -274,6 +301,7 @@ def ilab_pipeline(
         size="100Gi",
         storage_class_name=k8s_storage_class_name,
     )
+    output_pvc_task.after(pre_requisites_check_task)
 
     # Training 1
     # Using pvc_create_task.output as PyTorchJob name since dsl.PIPELINE_* global variables do not template/work in KFP v2
