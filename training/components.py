@@ -4,6 +4,7 @@
 from typing import Optional
 
 from kfp import dsl
+from kubeflow.training.constants.constants import ISTIO_SIDECAR_INJECTION
 
 from utils.consts import PYTHON_IMAGE, RHELAI_IMAGE, TOOLBOX_IMAGE
 
@@ -126,6 +127,11 @@ def knowledge_processed_data_to_artifact_op(
 # Change base image to the RHOAI python image with kubeflow_training once available
 @dsl.component(base_image=PYTHON_IMAGE, install_kfp_package=False)
 def pytorch_job_launcher_op(
+    gpu_identifier: str,
+    cpu_per_worker: str,
+    memory_per_worker: str,
+    tolerations: list,
+    node_selectors: dict,
     pytorchjob_output_yaml: dsl.Output[dsl.Artifact],
     model_pvc_name: str,
     input_pvc_name: str,
@@ -170,7 +176,13 @@ def pytorch_job_launcher_op(
     else:
         raise RuntimeError(f"Unsupported value of {phase_num=}")
 
-    resources_per_worker = {"nvidia.com/gpu": nproc_per_node}
+    if gpu_identifier == "":
+        raise RuntimeError(f"GPU identifier cannot be empty")
+    resources_per_worker = {
+        'cpu': cpu_per_worker,
+        'memory': memory_per_worker,
+        gpu_identifier: nproc_per_node
+    }
 
     name = f"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}"
     command = ["/bin/sh", "-c", "--"]
@@ -309,15 +321,31 @@ def pytorch_job_launcher_op(
     worker_container_spec.env = env_vars
 
     # create master pod spec
-    master_pod_template_spec = kfto_utils.get_pod_template_spec(
-        containers=[master_container_spec],
-        volumes=volumes,
+    master_pod_template_spec = models.V1PodTemplateSpec(
+        metadata=models.V1ObjectMeta(
+            annotations={ISTIO_SIDECAR_INJECTION: "false"}
+        ),
+        spec=models.V1PodSpec(
+            init_containers=None,
+            containers=[master_container_spec],
+            volumes=volumes,
+            tolerations=tolerations,
+            node_selector=node_selectors,
+        ),
     )
 
     # create worker pod spec
-    worker_pod_template_spec = kfto_utils.get_pod_template_spec(
-        containers=[worker_container_spec],
-        volumes=volumes,
+    worker_pod_template_spec = models.V1PodTemplateSpec(
+        metadata=models.V1ObjectMeta(
+            annotations={ISTIO_SIDECAR_INJECTION: "false"}
+        ),
+        spec=models.V1PodSpec(
+            init_containers=None,
+            containers=[worker_container_spec],
+            volumes=volumes,
+            tolerations=tolerations,
+            node_selector=node_selectors,
+        ),
     )
 
     logging.getLogger(__name__).setLevel(logging.INFO)
@@ -329,7 +357,6 @@ def pytorch_job_launcher_op(
     # And it also loads the kube config
     training_client = TrainingClient()
     namespace = training_client.namespace
-
     # Create pytorch job spec
     job_template = kfto_utils.get_pytorchjob_template(
         name=name,
