@@ -317,6 +317,11 @@ def ilab_pipeline(
     # Using pvc_create_task.output as PyTorchJob name since dsl.PIPELINE_* global variables do not template/work in KFP v2
     # https://github.com/kubeflow/pipelines/issues/10453
     training_phase_1 = pytorch_job_launcher_op(
+        gpu_identifier=train_gpu_identifier,
+        cpu_per_worker=train_cpu_per_worker,
+        memory_per_worker=train_memory_per_worker,
+        tolerations=train_tolerations,
+        node_selectors=train_node_selectors,
         model_pvc_name=model_pvc_task.output,
         input_pvc_name=sdg_input_pvc_task.output,
         name_suffix=sdg_input_pvc_task.output,
@@ -338,6 +343,11 @@ def ilab_pipeline(
 
     #### Train 2
     training_phase_2 = pytorch_job_launcher_op(
+        gpu_identifier=train_gpu_identifier,
+        cpu_per_worker=train_cpu_per_worker,
+        memory_per_worker=train_memory_per_worker,
+        tolerations=train_tolerations,
+        node_selectors=train_node_selectors,
         model_pvc_name=model_pvc_task.output,
         input_pvc_name=sdg_input_pvc_task.output,
         name_suffix=sdg_input_pvc_task.output,
@@ -378,7 +388,7 @@ def ilab_pipeline(
     )
     run_mt_bench_task.set_env_variable("HOME", "/tmp")
     run_mt_bench_task.set_env_variable("HF_HOME", "/tmp")
-    run_mt_bench_task.set_accelerator_type("nvidia.com/gpu")
+    run_mt_bench_task.set_accelerator_type(eval_gpu_identifier)
     run_mt_bench_task.set_accelerator_limit(1)
     run_mt_bench_task.set_caching_options(False)
     run_mt_bench_task.after(training_phase_2)
@@ -448,7 +458,7 @@ def ilab_pipeline(
     )
 
     final_eval_task.after(run_mt_bench_task)
-    final_eval_task.set_accelerator_type("nvidia.com/gpu")
+    final_eval_task.set_accelerator_type(eval_gpu_identifier)
     final_eval_task.set_accelerator_limit(1)
     final_eval_task.set_caching_options(False)
 

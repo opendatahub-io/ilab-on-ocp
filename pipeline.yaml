@@ -47,8 +47,6 @@
 #    train_save_samples: int [Default: 250000.0]
 #    train_seed: int [Default: 42.0]
 #    train_tolerations: list
-# Outputs:
-#    generate-metrics-report-op-metrics: system.Metrics
 components:
   comp-createpvc:
     executorLabel: exec-createpvc
@@ -400,6 +398,8 @@ components:
       parameters:
         base_image:
           parameterType: STRING
+        cpu_per_worker:
+          parameterType: STRING
         delete_after_done:
           defaultValue: false
           isOptional: true
@@ -408,6 +408,8 @@ components:
           defaultValue: 3840.0
           isOptional: true
           parameterType: NUMBER_INTEGER
+        gpu_identifier:
+          parameterType: STRING
         input_pvc_name:
           parameterType: STRING
         job_timeout:
@@ -422,6 +424,8 @@ components:
           defaultValue: 20000.0
           isOptional: true
           parameterType: NUMBER_INTEGER
+        memory_per_worker:
+          parameterType: STRING
         model_pvc_name:
           parameterType: STRING
         name_suffix:
@@ -430,6 +434,8 @@ components:
           defaultValue: 2.0
           isOptional: true
           parameterType: NUMBER_INTEGER
+        node_selectors:
+          parameterType: STRUCT
         nproc_per_node:
           defaultValue: 3.0
           isOptional: true
@@ -454,6 +460,8 @@ components:
           defaultValue: 42.0
           isOptional: true
           parameterType: NUMBER_INTEGER
+        tolerations:
+          parameterType: LIST
     outputDefinitions:
       artifacts:
         pytorchjob_output_yaml:
@@ -466,6 +474,8 @@ components:
       parameters:
         base_image:
           parameterType: STRING
+        cpu_per_worker:
+          parameterType: STRING
         delete_after_done:
           defaultValue: false
           isOptional: true
@@ -474,6 +484,8 @@ components:
           defaultValue: 3840.0
           isOptional: true
           parameterType: NUMBER_INTEGER
+        gpu_identifier:
+          parameterType: STRING
         input_pvc_name:
           parameterType: STRING
         job_timeout:
@@ -488,6 +500,8 @@ components:
           defaultValue: 20000.0
           isOptional: true
           parameterType: NUMBER_INTEGER
+        memory_per_worker:
+          parameterType: STRING
         model_pvc_name:
           parameterType: STRING
         name_suffix:
@@ -496,6 +510,8 @@ components:
           defaultValue: 2.0
           isOptional: true
           parameterType: NUMBER_INTEGER
+        node_selectors:
+          parameterType: STRUCT
         nproc_per_node:
           defaultValue: 3.0
           isOptional: true
@@ -520,6 +536,8 @@ components:
           defaultValue: 42.0
           isOptional: true
           parameterType: NUMBER_INTEGER
+        tolerations:
+          parameterType: LIST
     outputDefinitions:
       artifacts:
         pytorchjob_output_yaml:
@@ -872,27 +890,30 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef pytorch_job_launcher_op(\n    pytorchjob_output_yaml: dsl.Output[dsl.Artifact],\n\
-          \    model_pvc_name: str,\n    input_pvc_name: str,\n    output_pvc_name:\
-          \ str,\n    name_suffix: str,\n    phase_num: int,\n    base_image: str,\n\
-          \    nproc_per_node: int = 3,\n    nnodes: int = 2,\n    num_epochs: int\
-          \ = 2,\n    effective_batch_size: int = 3840,\n    learning_rate: float\
-          \ = 1e-4,\n    num_warmup_steps: int = 800,\n    save_samples: int = 0,\n\
-          \    max_batch_len: int = 20000,\n    seed: int = 42,\n    job_timeout:\
-          \ int = 86400,\n    delete_after_done: bool = False,\n):\n    import logging\n\
-          \    import os\n\n    from kubeflow.training import TrainingClient, models\n\
-          \    from kubeflow.training.utils import utils as kfto_utils\n\n    def\
-          \ list_phase1_final_model():\n        model_dir = \"/output/phase_1/model/hf_format\"\
-          \n        model_list = os.listdir(model_dir)\n        newest_idx = max(\n\
-          \            (os.path.getmtime(f\"{model_dir}/{model}\"), i)\n         \
-          \   for i, model in enumerate(model_list)\n        )[-1]\n        newest_model\
-          \ = model_list[newest_idx]\n        return f\"{model_dir}/{newest_model}\"\
+          \ *\n\ndef pytorch_job_launcher_op(\n    gpu_identifier: str,\n    cpu_per_worker:\
+          \ str,\n    memory_per_worker: str,\n    tolerations: list,\n    node_selectors:\
+          \ dict,\n    pytorchjob_output_yaml: dsl.Output[dsl.Artifact],\n    model_pvc_name:\
+          \ str,\n    input_pvc_name: str,\n    output_pvc_name: str,\n    name_suffix:\
+          \ str,\n    phase_num: int,\n    base_image: str,\n    nproc_per_node: int\
+          \ = 3,\n    nnodes: int = 2,\n    num_epochs: int = 2,\n    effective_batch_size:\
+          \ int = 3840,\n    learning_rate: float = 1e-4,\n    num_warmup_steps: int\
+          \ = 800,\n    save_samples: int = 0,\n    max_batch_len: int = 20000,\n\
+          \    seed: int = 42,\n    job_timeout: int = 86400,\n    delete_after_done:\
+          \ bool = False,\n):\n    import logging\n    import os\n\n    from kubeflow.training\
+          \ import TrainingClient, models\n    from kubeflow.training.utils import\
+          \ utils as kfto_utils\n\n    def list_phase1_final_model():\n        model_dir\
+          \ = \"/output/phase_1/model/hf_format\"\n        model_list = os.listdir(model_dir)\n\
+          \        newest_idx = max(\n            (os.path.getmtime(f\"{model_dir}/{model}\"\
+          ), i)\n            for i, model in enumerate(model_list)\n        )[-1]\n\
+          \        newest_model = model_list[newest_idx]\n        return f\"{model_dir}/{newest_model}\"\
           \n\n    if phase_num == 1:\n        path_to_model = \"/input_model\"\n \
           \       path_to_data = \"/input_data/knowledge/data.jsonl\"\n    elif phase_num\
           \ == 2:\n        path_to_model = list_phase1_final_model()\n        path_to_data\
           \ = \"/input_data/skills/data.jsonl\"\n    else:\n        raise RuntimeError(f\"\
-          Unsupported value of {phase_num=}\")\n\n    resources_per_worker = {\"nvidia.com/gpu\"\
-          : nproc_per_node}\n\n    name = f\"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}\"\
+          Unsupported value of {phase_num=}\")\n\n    if gpu_identifier == \"\":\n\
+          \        raise RuntimeError(f\"GPU identifier cannot be empty\")\n    resources_per_worker\
+          \ = {\n        'cpu': cpu_per_worker,\n        'memory': memory_per_worker,\n\
+          \        gpu_identifier: nproc_per_node\n    }\n\n    name = f\"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}\"\
           \n    command = [\"/bin/sh\", \"-c\", \"--\"]\n\n    master_args = [\n \
           \       f\"\"\"\n        echo \"Running phase {phase_num}\"\n        echo\
           \ \"Using {path_to_model} model for training\"\n        echo \"Using {path_to_data}\
@@ -956,15 +977,23 @@ deploymentSpec:
           \        volume_mounts=volume_mounts_worker,\n    )\n    worker_container_spec.command\
           \ = command\n    worker_container_spec.args = worker_args\n    worker_container_spec.env\
           \ = env_vars\n\n    # create master pod spec\n    master_pod_template_spec\
-          \ = kfto_utils.get_pod_template_spec(\n        containers=[master_container_spec],\n\
-          \        volumes=volumes,\n    )\n\n    # create worker pod spec\n    worker_pod_template_spec\
-          \ = kfto_utils.get_pod_template_spec(\n        containers=[worker_container_spec],\n\
-          \        volumes=volumes,\n    )\n\n    logging.getLogger(__name__).setLevel(logging.INFO)\n\
+          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(\n \
+          \           annotations={ISTIO_SIDECAR_INJECTION: \"false\"}\n        ),\n\
+          \        spec=models.V1PodSpec(\n            init_containers=None,\n   \
+          \         containers=[master_container_spec],\n            volumes=volumes,\n\
+          \            tolerations=tolerations,\n            node_selector=node_selectors,\n\
+          \        ),\n    )\n\n    # create worker pod spec\n    worker_pod_template_spec\
+          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(\n \
+          \           annotations={ISTIO_SIDECAR_INJECTION: \"false\"}\n        ),\n\
+          \        spec=models.V1PodSpec(\n            init_containers=None,\n   \
+          \         containers=[worker_container_spec],\n            volumes=volumes,\n\
+          \            tolerations=tolerations,\n            node_selector=node_selectors,\n\
+          \        ),\n    )\n\n    logging.getLogger(__name__).setLevel(logging.INFO)\n\
           \    logging.info(\"Generating job template.\")\n    logging.info(\"Creating\
           \ TrainingClient.\")\n\n    # Initialize training client\n    # This also\
           \ finds the namespace from /var/run/secrets/kubernetes.io/serviceaccount/namespace\n\
           \    # And it also loads the kube config\n    training_client = TrainingClient()\n\
-          \    namespace = training_client.namespace\n\n    # Create pytorch job spec\n\
+          \    namespace = training_client.namespace\n    # Create pytorch job spec\n\
           \    job_template = kfto_utils.get_pytorchjob_template(\n        name=name,\n\
           \        namespace=namespace,\n        worker_pod_template_spec=worker_pod_template_spec,\n\
           \        master_pod_template_spec=master_pod_template_spec,\n        num_workers=nnodes,\n\
@@ -1002,27 +1031,30 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef pytorch_job_launcher_op(\n    pytorchjob_output_yaml: dsl.Output[dsl.Artifact],\n\
-          \    model_pvc_name: str,\n    input_pvc_name: str,\n    output_pvc_name:\
-          \ str,\n    name_suffix: str,\n    phase_num: int,\n    base_image: str,\n\
-          \    nproc_per_node: int = 3,\n    nnodes: int = 2,\n    num_epochs: int\
-          \ = 2,\n    effective_batch_size: int = 3840,\n    learning_rate: float\
-          \ = 1e-4,\n    num_warmup_steps: int = 800,\n    save_samples: int = 0,\n\
-          \    max_batch_len: int = 20000,\n    seed: int = 42,\n    job_timeout:\
-          \ int = 86400,\n    delete_after_done: bool = False,\n):\n    import logging\n\
-          \    import os\n\n    from kubeflow.training import TrainingClient, models\n\
-          \    from kubeflow.training.utils import utils as kfto_utils\n\n    def\
-          \ list_phase1_final_model():\n        model_dir = \"/output/phase_1/model/hf_format\"\
-          \n        model_list = os.listdir(model_dir)\n        newest_idx = max(\n\
-          \            (os.path.getmtime(f\"{model_dir}/{model}\"), i)\n         \
-          \   for i, model in enumerate(model_list)\n        )[-1]\n        newest_model\
-          \ = model_list[newest_idx]\n        return f\"{model_dir}/{newest_model}\"\
+          \ *\n\ndef pytorch_job_launcher_op(\n    gpu_identifier: str,\n    cpu_per_worker:\
+          \ str,\n    memory_per_worker: str,\n    tolerations: list,\n    node_selectors:\
+          \ dict,\n    pytorchjob_output_yaml: dsl.Output[dsl.Artifact],\n    model_pvc_name:\
+          \ str,\n    input_pvc_name: str,\n    output_pvc_name: str,\n    name_suffix:\
+          \ str,\n    phase_num: int,\n    base_image: str,\n    nproc_per_node: int\
+          \ = 3,\n    nnodes: int = 2,\n    num_epochs: int = 2,\n    effective_batch_size:\
+          \ int = 3840,\n    learning_rate: float = 1e-4,\n    num_warmup_steps: int\
+          \ = 800,\n    save_samples: int = 0,\n    max_batch_len: int = 20000,\n\
+          \    seed: int = 42,\n    job_timeout: int = 86400,\n    delete_after_done:\
+          \ bool = False,\n):\n    import logging\n    import os\n\n    from kubeflow.training\
+          \ import TrainingClient, models\n    from kubeflow.training.utils import\
+          \ utils as kfto_utils\n\n    def list_phase1_final_model():\n        model_dir\
+          \ = \"/output/phase_1/model/hf_format\"\n        model_list = os.listdir(model_dir)\n\
+          \        newest_idx = max(\n            (os.path.getmtime(f\"{model_dir}/{model}\"\
+          ), i)\n            for i, model in enumerate(model_list)\n        )[-1]\n\
+          \        newest_model = model_list[newest_idx]\n        return f\"{model_dir}/{newest_model}\"\
           \n\n    if phase_num == 1:\n        path_to_model = \"/input_model\"\n \
           \       path_to_data = \"/input_data/knowledge/data.jsonl\"\n    elif phase_num\
           \ == 2:\n        path_to_model = list_phase1_final_model()\n        path_to_data\
           \ = \"/input_data/skills/data.jsonl\"\n    else:\n        raise RuntimeError(f\"\
-          Unsupported value of {phase_num=}\")\n\n    resources_per_worker = {\"nvidia.com/gpu\"\
-          : nproc_per_node}\n\n    name = f\"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}\"\
+          Unsupported value of {phase_num=}\")\n\n    if gpu_identifier == \"\":\n\
+          \        raise RuntimeError(f\"GPU identifier cannot be empty\")\n    resources_per_worker\
+          \ = {\n        'cpu': cpu_per_worker,\n        'memory': memory_per_worker,\n\
+          \        gpu_identifier: nproc_per_node\n    }\n\n    name = f\"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}\"\
           \n    command = [\"/bin/sh\", \"-c\", \"--\"]\n\n    master_args = [\n \
           \       f\"\"\"\n        echo \"Running phase {phase_num}\"\n        echo\
           \ \"Using {path_to_model} model for training\"\n        echo \"Using {path_to_data}\
@@ -1086,15 +1118,23 @@ deploymentSpec:
           \        volume_mounts=volume_mounts_worker,\n    )\n    worker_container_spec.command\
           \ = command\n    worker_container_spec.args = worker_args\n    worker_container_spec.env\
           \ = env_vars\n\n    # create master pod spec\n    master_pod_template_spec\
-          \ = kfto_utils.get_pod_template_spec(\n        containers=[master_container_spec],\n\
-          \        volumes=volumes,\n    )\n\n    # create worker pod spec\n    worker_pod_template_spec\
-          \ = kfto_utils.get_pod_template_spec(\n        containers=[worker_container_spec],\n\
-          \        volumes=volumes,\n    )\n\n    logging.getLogger(__name__).setLevel(logging.INFO)\n\
+          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(\n \
+          \           annotations={ISTIO_SIDECAR_INJECTION: \"false\"}\n        ),\n\
+          \        spec=models.V1PodSpec(\n            init_containers=None,\n   \
+          \         containers=[master_container_spec],\n            volumes=volumes,\n\
+          \            tolerations=tolerations,\n            node_selector=node_selectors,\n\
+          \        ),\n    )\n\n    # create worker pod spec\n    worker_pod_template_spec\
+          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(\n \
+          \           annotations={ISTIO_SIDECAR_INJECTION: \"false\"}\n        ),\n\
+          \        spec=models.V1PodSpec(\n            init_containers=None,\n   \
+          \         containers=[worker_container_spec],\n            volumes=volumes,\n\
+          \            tolerations=tolerations,\n            node_selector=node_selectors,\n\
+          \        ),\n    )\n\n    logging.getLogger(__name__).setLevel(logging.INFO)\n\
           \    logging.info(\"Generating job template.\")\n    logging.info(\"Creating\
           \ TrainingClient.\")\n\n    # Initialize training client\n    # This also\
           \ finds the namespace from /var/run/secrets/kubernetes.io/serviceaccount/namespace\n\
           \    # And it also loads the kube config\n    training_client = TrainingClient()\n\
-          \    namespace = training_client.namespace\n\n    # Create pytorch job spec\n\
+          \    namespace = training_client.namespace\n    # Create pytorch job spec\n\
           \    job_template = kfto_utils.get_pytorchjob_template(\n        name=name,\n\
           \        namespace=namespace,\n        worker_pod_template_spec=worker_pod_template_spec,\n\
           \        master_pod_template_spec=master_pod_template_spec,\n        num_workers=nnodes,\n\
@@ -1378,7 +1418,9 @@ deploymentSpec:
         resources:
           accelerator:
             count: '1'
-            type: nvidia.com/gpu
+            resourceCount: '1'
+            resourceType: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
+            type: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
     exec-run-mt-bench-op:
       container:
         args:
@@ -1508,7 +1550,9 @@ deploymentSpec:
         resources:
           accelerator:
             count: '1'
-            type: nvidia.com/gpu
+            resourceCount: '1'
+            resourceType: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
+            type: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
     exec-sdg-op:
       container:
         args:
@@ -1648,12 +1692,6 @@ pipelineInfo:
   name: instructlab
 root:
   dag:
-    outputs:
-      artifacts:
-        generate-metrics-report-op-metrics:
-          artifactSelectors:
-          - outputArtifactKey: metrics
-            producerSubtask: generate-metrics-report-op
     tasks:
       createpvc:
         cachingOptions:
@@ -1916,8 +1954,12 @@ root:
             base_image:
               runtimeValue:
                 constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+            cpu_per_worker:
+              componentInputParameter: train_cpu_per_worker
             effective_batch_size:
               componentInputParameter: train_effective_batch_size_phase_1
+            gpu_identifier:
+              componentInputParameter: train_gpu_identifier
             input_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
@@ -1926,6 +1968,8 @@ root:
               componentInputParameter: train_learning_rate_phase_1
             max_batch_len:
               componentInputParameter: train_max_batch_len
+            memory_per_worker:
+              componentInputParameter: train_memory_per_worker
             model_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
@@ -1936,6 +1980,8 @@ root:
                 producerTask: createpvc
             nnodes:
               componentInputParameter: train_num_workers
+            node_selectors:
+              componentInputParameter: train_node_selectors
             nproc_per_node:
               componentInputParameter: train_gpu_per_worker
             num_epochs:
@@ -1953,6 +1999,8 @@ root:
               componentInputParameter: train_save_samples
             seed:
               componentInputParameter: train_seed
+            tolerations:
+              componentInputParameter: train_tolerations
         taskInfo:
           name: pytorch-job-launcher-op
       pytorch-job-launcher-op-2:
@@ -1969,8 +2017,12 @@ root:
             base_image:
               runtimeValue:
                 constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+            cpu_per_worker:
+              componentInputParameter: train_cpu_per_worker
             effective_batch_size:
               componentInputParameter: train_effective_batch_size_phase_2
+            gpu_identifier:
+              componentInputParameter: train_gpu_identifier
             input_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
@@ -1979,6 +2031,8 @@ root:
               componentInputParameter: train_learning_rate_phase_2
             max_batch_len:
               componentInputParameter: train_max_batch_len
+            memory_per_worker:
+              componentInputParameter: train_memory_per_worker
             model_pvc_name:
               taskOutputParameter:
                 outputParameterKey: name
@@ -1989,6 +2043,8 @@ root:
                 producerTask: createpvc
             nnodes:
               componentInputParameter: train_num_workers
+            node_selectors:
+              componentInputParameter: train_node_selectors
             nproc_per_node:
               componentInputParameter: train_gpu_per_worker
             num_epochs:
@@ -2006,6 +2062,8 @@ root:
               componentInputParameter: train_save_samples
             seed:
               componentInputParameter: train_seed
+            tolerations:
+              componentInputParameter: train_tolerations
         taskInfo:
           name: pytorch-job-launcher-op-2
       run-final-eval-op:
@@ -2019,6 +2077,9 @@ root:
         - run-mt-bench-op
         inputs:
           parameters:
+            accelerator_type:
+              runtimeValue:
+                constant: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
             base_branch:
               componentInputParameter: sdg_repo_branch
             base_model_dir:
@@ -2037,6 +2098,8 @@ root:
               componentInputParameter: final_eval_max_workers
             merge_system_user_message:
               componentInputParameter: final_eval_merge_system_user_message
+            pipelinechannel--eval_gpu_identifier:
+              componentInputParameter: eval_gpu_identifier
         taskInfo:
           name: run-final-eval-op
       run-mt-bench-op:
@@ -2048,6 +2111,9 @@ root:
         - pytorch-job-launcher-op-2
         inputs:
           parameters:
+            accelerator_type:
+              runtimeValue:
+                constant: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
             max_workers:
               componentInputParameter: mt_bench_max_workers
             merge_system_user_message:
@@ -2055,6 +2121,8 @@ root:
             models_folder:
               runtimeValue:
                 constant: /output/phase_2/model/hf_format
+            pipelinechannel--eval_gpu_identifier:
+              componentInputParameter: eval_gpu_identifier
         taskInfo:
           name: run-mt-bench-op
       sdg-op:
@@ -2369,14 +2437,8 @@ root:
         description: Training parameter. List of tolerations applied to training pods.
         isOptional: true
         parameterType: LIST
-  outputDefinitions:
-    artifacts:
-      generate-metrics-report-op-metrics:
-        artifactType:
-          schemaTitle: system.Metrics
-          schemaVersion: 0.0.1
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.9.0
+sdkVersion: kfp-2.11.0
 ---
 platforms:
   kubernetes:
