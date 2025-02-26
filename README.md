@@ -211,6 +211,8 @@ To collaborate on this repository, please follow these steps:
     source .venv/bin/activate
     ```
 
+## Adding/Updating dependencies
+
 When updating python package dependencies in `pyproject.toml`, regenerate [requirements.txt](requirements.txt):
 
 ```
@@ -220,10 +222,10 @@ uv pip compile pyproject.toml --generate-hashes > requirements.txt
 To regenerate `[requirements-build.txt](requirements-build.txt)` is currently a manual step.
 For this you need [pybuild-deps](https://pybuild-deps.readthedocs.io/en/latest/usage.html#pybuild-deps-compile) installed.
 
-Remove `kfp-pipeline-spec` from `requirement.txt`. And run:
+Temporarily remove `kfp-pipeline-spec` from `requirement.txt`. And run:
 
 ```bash
-pybuild-deps compile requirements.txt
+pybuild-deps compile requirements.txt -o requirements-build.txt
 ```
 
 > Note that, we do this because `kfp-pipeline-spec` only includes wheels and not the sources, this breaks
