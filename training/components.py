@@ -179,9 +179,9 @@ def pytorch_job_launcher_op(
     if gpu_identifier == "":
         raise RuntimeError(f"GPU identifier cannot be empty")
     resources_per_worker = {
-        'cpu': cpu_per_worker,
-        'memory': memory_per_worker,
-        gpu_identifier: nproc_per_node
+        "cpu": cpu_per_worker,
+        "memory": memory_per_worker,
+        gpu_identifier: nproc_per_node,
     }
 
     name = f"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}"
@@ -322,9 +322,7 @@ def pytorch_job_launcher_op(
 
     # create master pod spec
     master_pod_template_spec = models.V1PodTemplateSpec(
-        metadata=models.V1ObjectMeta(
-            annotations={ISTIO_SIDECAR_INJECTION: "false"}
-        ),
+        metadata=models.V1ObjectMeta(annotations={ISTIO_SIDECAR_INJECTION: "false"}),
         spec=models.V1PodSpec(
             init_containers=None,
             containers=[master_container_spec],
@@ -336,9 +334,7 @@ def pytorch_job_launcher_op(
 
     # create worker pod spec
     worker_pod_template_spec = models.V1PodTemplateSpec(
-        metadata=models.V1ObjectMeta(
-            annotations={ISTIO_SIDECAR_INJECTION: "false"}
-        ),
+        metadata=models.V1ObjectMeta(annotations={ISTIO_SIDECAR_INJECTION: "false"}),
         spec=models.V1PodSpec(
             init_containers=None,
             containers=[worker_container_spec],

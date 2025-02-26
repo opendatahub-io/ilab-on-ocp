@@ -213,6 +213,7 @@ def ilab_pipeline(
         repo_branch=sdg_repo_branch,
         repo_pr=sdg_repo_pr,
         sdg_sampling_size=sdg_sample_size,
+        sdg_secret_name=sdg_teacher_secret,
     )
     sdg_task.set_env_variable("HOME", "/tmp")
     sdg_task.set_env_variable("HF_HOME", "/tmp")
@@ -380,6 +381,7 @@ def ilab_pipeline(
         models_folder="/output/phase_2/model/hf_format",
         max_workers=mt_bench_max_workers,
         merge_system_user_message=mt_bench_merge_system_user_message,
+        judge_secret_name=eval_judge_secret,
     )
     mount_pvc(
         task=run_mt_bench_task,
@@ -420,6 +422,7 @@ def ilab_pipeline(
         merge_system_user_message=final_eval_merge_system_user_message,
         few_shots=final_eval_few_shots,
         batch_size=final_eval_batch_size,
+        judge_secret_name=eval_judge_secret,
     )
     mount_pvc(
         task=final_eval_task, pvc_name=output_pvc_task.output, mount_path="/output"
