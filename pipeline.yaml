@@ -10,6 +10,7 @@
 #    final_eval_merge_system_user_message: bool [Default: False]
 #    input_model_uri: str
 #    k8s_storage_class_name: str [Default: 'standard']
+#    k8s_storage_size: str [Default: '100Gi']
 #    mt_bench_max_workers: str [Default: 'auto']
 #    mt_bench_merge_system_user_message: bool [Default: False]
 #    output_model_name: str
@@ -561,6 +562,9 @@ components:
           parameterType: STRING
         few_shots:
           parameterType: NUMBER_INTEGER
+        judge_secret_name:
+          isOptional: true
+          parameterType: STRING
         max_workers:
           parameterType: STRING
         merge_system_user_message:
@@ -585,6 +589,9 @@ components:
     executorLabel: exec-run-mt-bench-op
     inputDefinitions:
       parameters:
+        judge_secret_name:
+          isOptional: true
+          parameterType: STRING
         max_workers:
           parameterType: STRING
         merge_system_user_message:
@@ -621,6 +628,9 @@ components:
           defaultValue: 1.0
           isOptional: true
           parameterType: NUMBER_DOUBLE
+        sdg_secret_name:
+          isOptional: true
+          parameterType: STRING
         taxonomy_path:
           defaultValue: /data/taxonomy
           isOptional: true
@@ -900,7 +910,8 @@ deploymentSpec:
           \ = 800,\n    save_samples: int = 0,\n    max_batch_len: int = 20000,\n\
           \    seed: int = 42,\n    job_timeout: int = 86400,\n    delete_after_done:\
           \ bool = False,\n):\n    import logging\n    import os\n\n    from kubeflow.training\
-          \ import TrainingClient, models\n    from kubeflow.training.utils import\
+          \ import TrainingClient, models\n    from kubeflow.training.constants.constants\
+          \ import ISTIO_SIDECAR_INJECTION\n    from kubeflow.training.utils import\
           \ utils as kfto_utils\n\n    def list_phase1_final_model():\n        model_dir\
           \ = \"/output/phase_1/model/hf_format\"\n        model_list = os.listdir(model_dir)\n\
           \        newest_idx = max(\n            (os.path.getmtime(f\"{model_dir}/{model}\"\
@@ -912,8 +923,8 @@ deploymentSpec:
           \ = \"/input_data/skills/data.jsonl\"\n    else:\n        raise RuntimeError(f\"\
           Unsupported value of {phase_num=}\")\n\n    if gpu_identifier == \"\":\n\
           \        raise RuntimeError(f\"GPU identifier cannot be empty\")\n    resources_per_worker\
-          \ = {\n        'cpu': cpu_per_worker,\n        'memory': memory_per_worker,\n\
-          \        gpu_identifier: nproc_per_node\n    }\n\n    name = f\"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}\"\
+          \ = {\n        \"cpu\": cpu_per_worker,\n        \"memory\": memory_per_worker,\n\
+          \        gpu_identifier: nproc_per_node,\n    }\n\n    name = f\"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}\"\
           \n    command = [\"/bin/sh\", \"-c\", \"--\"]\n\n    master_args = [\n \
           \       f\"\"\"\n        echo \"Running phase {phase_num}\"\n        echo\
           \ \"Using {path_to_model} model for training\"\n        echo \"Using {path_to_data}\
@@ -977,16 +988,14 @@ deploymentSpec:
           \        volume_mounts=volume_mounts_worker,\n    )\n    worker_container_spec.command\
           \ = command\n    worker_container_spec.args = worker_args\n    worker_container_spec.env\
           \ = env_vars\n\n    # create master pod spec\n    master_pod_template_spec\
-          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(\n \
-          \           annotations={ISTIO_SIDECAR_INJECTION: \"false\"}\n        ),\n\
-          \        spec=models.V1PodSpec(\n            init_containers=None,\n   \
-          \         containers=[master_container_spec],\n            volumes=volumes,\n\
+          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(annotations={ISTIO_SIDECAR_INJECTION:\
+          \ \"false\"}),\n        spec=models.V1PodSpec(\n            init_containers=None,\n\
+          \            containers=[master_container_spec],\n            volumes=volumes,\n\
           \            tolerations=tolerations,\n            node_selector=node_selectors,\n\
           \        ),\n    )\n\n    # create worker pod spec\n    worker_pod_template_spec\
-          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(\n \
-          \           annotations={ISTIO_SIDECAR_INJECTION: \"false\"}\n        ),\n\
-          \        spec=models.V1PodSpec(\n            init_containers=None,\n   \
-          \         containers=[worker_container_spec],\n            volumes=volumes,\n\
+          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(annotations={ISTIO_SIDECAR_INJECTION:\
+          \ \"false\"}),\n        spec=models.V1PodSpec(\n            init_containers=None,\n\
+          \            containers=[worker_container_spec],\n            volumes=volumes,\n\
           \            tolerations=tolerations,\n            node_selector=node_selectors,\n\
           \        ),\n    )\n\n    logging.getLogger(__name__).setLevel(logging.INFO)\n\
           \    logging.info(\"Generating job template.\")\n    logging.info(\"Creating\
@@ -1041,7 +1050,8 @@ deploymentSpec:
           \ = 800,\n    save_samples: int = 0,\n    max_batch_len: int = 20000,\n\
           \    seed: int = 42,\n    job_timeout: int = 86400,\n    delete_after_done:\
           \ bool = False,\n):\n    import logging\n    import os\n\n    from kubeflow.training\
-          \ import TrainingClient, models\n    from kubeflow.training.utils import\
+          \ import TrainingClient, models\n    from kubeflow.training.constants.constants\
+          \ import ISTIO_SIDECAR_INJECTION\n    from kubeflow.training.utils import\
           \ utils as kfto_utils\n\n    def list_phase1_final_model():\n        model_dir\
           \ = \"/output/phase_1/model/hf_format\"\n        model_list = os.listdir(model_dir)\n\
           \        newest_idx = max(\n            (os.path.getmtime(f\"{model_dir}/{model}\"\
@@ -1053,8 +1063,8 @@ deploymentSpec:
           \ = \"/input_data/skills/data.jsonl\"\n    else:\n        raise RuntimeError(f\"\
           Unsupported value of {phase_num=}\")\n\n    if gpu_identifier == \"\":\n\
           \        raise RuntimeError(f\"GPU identifier cannot be empty\")\n    resources_per_worker\
-          \ = {\n        'cpu': cpu_per_worker,\n        'memory': memory_per_worker,\n\
-          \        gpu_identifier: nproc_per_node\n    }\n\n    name = f\"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}\"\
+          \ = {\n        \"cpu\": cpu_per_worker,\n        \"memory\": memory_per_worker,\n\
+          \        gpu_identifier: nproc_per_node,\n    }\n\n    name = f\"train-phase-{phase_num}-{name_suffix.rstrip('-sdg')}\"\
           \n    command = [\"/bin/sh\", \"-c\", \"--\"]\n\n    master_args = [\n \
           \       f\"\"\"\n        echo \"Running phase {phase_num}\"\n        echo\
           \ \"Using {path_to_model} model for training\"\n        echo \"Using {path_to_data}\
@@ -1118,16 +1128,14 @@ deploymentSpec:
           \        volume_mounts=volume_mounts_worker,\n    )\n    worker_container_spec.command\
           \ = command\n    worker_container_spec.args = worker_args\n    worker_container_spec.env\
           \ = env_vars\n\n    # create master pod spec\n    master_pod_template_spec\
-          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(\n \
-          \           annotations={ISTIO_SIDECAR_INJECTION: \"false\"}\n        ),\n\
-          \        spec=models.V1PodSpec(\n            init_containers=None,\n   \
-          \         containers=[master_container_spec],\n            volumes=volumes,\n\
+          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(annotations={ISTIO_SIDECAR_INJECTION:\
+          \ \"false\"}),\n        spec=models.V1PodSpec(\n            init_containers=None,\n\
+          \            containers=[master_container_spec],\n            volumes=volumes,\n\
           \            tolerations=tolerations,\n            node_selector=node_selectors,\n\
           \        ),\n    )\n\n    # create worker pod spec\n    worker_pod_template_spec\
-          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(\n \
-          \           annotations={ISTIO_SIDECAR_INJECTION: \"false\"}\n        ),\n\
-          \        spec=models.V1PodSpec(\n            init_containers=None,\n   \
-          \         containers=[worker_container_spec],\n            volumes=volumes,\n\
+          \ = models.V1PodTemplateSpec(\n        metadata=models.V1ObjectMeta(annotations={ISTIO_SIDECAR_INJECTION:\
+          \ \"false\"}),\n        spec=models.V1PodSpec(\n            init_containers=None,\n\
+          \            containers=[worker_container_spec],\n            volumes=volumes,\n\
           \            tolerations=tolerations,\n            node_selector=node_selectors,\n\
           \        ),\n    )\n\n    logging.getLogger(__name__).setLevel(logging.INFO)\n\
           \    logging.info(\"Generating job template.\")\n    logging.info(\"Creating\
@@ -1178,14 +1186,13 @@ deploymentSpec:
           \ candidate_model: str = None,\n    taxonomy_path: str = \"/input/taxonomy\"\
           ,\n    sdg_path: str = \"/input/sdg\",\n    mmlu_branch_output_path: str\
           \ = \"/output/mmlu_branch\",\n    mt_bench_branch_output_path: str = \"\
-          /output/mt_bench_branch\",\n):\n    import json\n    import os\n    import\
-          \ subprocess\n    from pathlib import Path\n\n    import httpx\n    import\
-          \ torch\n    from instructlab.eval.mmlu import MMLUBranchEvaluator\n   \
-          \ from instructlab.eval.mt_bench import MTBenchBranchEvaluator\n    from\
+          /output/mt_bench_branch\",\n    judge_secret_name: str = None,\n):\n   \
+          \ import base64\n    import json\n    import os\n    import subprocess\n\
+          \    from pathlib import Path\n\n    import httpx\n    import requests\n\
+          \    import torch\n    from instructlab.eval.mmlu import MMLUBranchEvaluator\n\
+          \    from instructlab.eval.mt_bench import MTBenchBranchEvaluator\n    from\
           \ instructlab.model.evaluate import qa_pairs_to_qna_to_avg_scores, sort_score\n\
-          \n    judge_api_key = os.getenv(\"JUDGE_API_KEY\", \"\")\n    judge_model_name\
-          \ = os.getenv(\"JUDGE_NAME\")\n    judge_endpoint = os.getenv(\"JUDGE_ENDPOINT\"\
-          )\n    judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls\
+          \n    judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls\
           \ = os.path.exists(judge_ca_cert_path) and (\n        os.path.getsize(judge_ca_cert_path)\
           \ > 0\n    )\n    judge_http_client = httpx.Client(verify=judge_ca_cert_path)\
           \ if use_tls else None\n\n    print(\"Starting Final Eval...\")\n\n    def\
@@ -1337,12 +1344,36 @@ deploymentSpec:
           utf-8\") as f:\n            json.dump(mmlu_branch_data, f, indent=4)\n \
           \   else:\n        print(\"No MMLU tasks directories found, skipping MMLU_branch\
           \ evaluation.\")\n\n    # MT_BENCH_BRANCH\n\n    print(\"Starting MT_BENCH_BRANCH\
-          \ ...\")\n\n    judge_api_key = os.getenv(\"JUDGE_API_KEY\", \"\")\n   \
-          \ judge_model_name = os.getenv(\"JUDGE_NAME\")\n    judge_endpoint = os.getenv(\"\
-          JUDGE_ENDPOINT\")\n\n    output_dir = \"/tmp/eval_output\"\n\n    # TODO:\
-          \ candidate_branch must be in same repo, not a fork, or, can compare main\
-          \ branch against candidate, base models\n    base_branch = base_branch or\
-          \ \"main\"\n    candidate_branch = candidate_branch or \"main\"\n\n    ######################################################################\n\
+          \ ...\")\n\n    def fetch_secret(secret_name, keys):\n        # Kubernetes\
+          \ API server inside the cluster\n        K8S_API_SERVER = \"https://kubernetes.default.svc\"\
+          \n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          \n        TOKEN_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
+          \n\n        # Fetch namespace\n        try:\n            with open(NAMESPACE_PATH,\
+          \ \"r\") as f:\n                namespace = f.read().strip()\n        except\
+          \ FileNotFoundError:\n            raise RuntimeError(\"Error reading namespace\"\
+          )\n\n        # Fetch service account token\n        try:\n            with\
+          \ open(TOKEN_PATH, \"r\") as f:\n                token = f.read().strip()\n\
+          \        except FileNotFoundError:\n            raise RuntimeError(\"Error\
+          \ reading service account token\")\n\n        headers = {\"Authorization\"\
+          : f\"Bearer {token}\", \"Accept\": \"application/json\"}\n        verify_tls\
+          \ = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\n        url\
+          \ = f\"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}\"\
+          \n        response = requests.get(url, headers=headers, verify=verify_tls)\n\
+          \n        if response.status_code == 200:\n            secret_data = response.json().get(\"\
+          data\", {})\n            return [base64.b64decode(secret_data[key]).decode()\
+          \ for key in keys]\n        else:\n            raise RuntimeError(\n   \
+          \             f\"Error fetching secret: {response.status_code} {response.text}\"\
+          \n            )\n\n    if judge_secret_name is None:\n        judge_api_key\
+          \ = os.getenv(\"JUDGE_API_KEY\", \"\")\n        judge_model_name = os.getenv(\"\
+          JUDGE_NAME\")\n        judge_endpoint = os.getenv(\"JUDGE_ENDPOINT\")\n\
+          \    else:\n        print(\"Eval Judge secret specified, fetching...\")\n\
+          \        judge_api_key, judge_model_name, judge_endpoint = fetch_secret(\n\
+          \            judge_secret_name, [\"api_token\", \"model_name\", \"endpoint\"\
+          ]\n        )\n        print(\"Eval Judge secret data retrieved.\")\n\n \
+          \   output_dir = \"/tmp/eval_output\"\n\n    # TODO: candidate_branch must\
+          \ be in same repo, not a fork, or, can compare main branch against candidate,\
+          \ base models\n    base_branch = base_branch or \"main\"\n    candidate_branch\
+          \ = candidate_branch or \"main\"\n\n    ######################################################################\n\
           \    # TODO: Update ilab/model/evaluate evaluate def logic to allow for\
           \ external judge model\n    # and when that happens, much of this logic\
           \ can be imported from the 'evaluate' definition:\n    # https://github.com/instructlab/instructlab/blob/83ca501ecdd858677380046e2a56da5b2f3f14e7/src/instructlab/model/evaluate.py#L504\n\
@@ -1445,23 +1476,47 @@ deploymentSpec:
           \  - 'auto'\n    # with 'auto', number of gpus allocated for serving is\
           \ calculated based on environment\n    # https://github.com/instructlab/eval/blob/main/src/instructlab/eval/mt_bench.py#L36\n\
           \    max_workers: str,\n    models_folder: str,\n    output_path: str =\
-          \ \"/output/mt_bench_data.json\",\n) -> NamedTuple(\"outputs\", best_model=str,\
-          \ best_score=float):\n    import json\n    import os\n    import subprocess\n\
-          \n    import httpx\n    import torch\n    from instructlab.eval.mt_bench\
-          \ import MTBenchEvaluator\n\n    judge_api_key = os.getenv(\"JUDGE_API_KEY\"\
-          , \"\")\n    judge_model_name = os.getenv(\"JUDGE_NAME\")\n    judge_endpoint\
-          \ = os.getenv(\"JUDGE_ENDPOINT\")\n    judge_ca_cert_path = os.getenv(\"\
-          JUDGE_CA_CERT_PATH\")\n    use_tls = os.path.exists(judge_ca_cert_path)\
-          \ and (\n        os.path.getsize(judge_ca_cert_path) > 0\n    )\n    judge_http_client\
-          \ = httpx.Client(verify=judge_ca_cert_path) if use_tls else None\n\n   \
-          \ def launch_vllm(\n        model_path: str, gpu_count: int, retries: int\
-          \ = 120, delay: int = 10\n    ) -> tuple:\n        import subprocess\n \
-          \       import sys\n        import time\n\n        import requests\n   \
-          \     from instructlab.model.backends.common import free_tcp_ipv4_port\n\
-          \n        free_port = free_tcp_ipv4_port(\"127.0.0.1\")\n        port =\
-          \ str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\n\
-          \n        command = [\n            sys.executable,\n            \"-m\",\n\
-          \            \"vllm.entrypoints.openai.api_server\",\n            \"--port\"\
+          \ \"/output/mt_bench_data.json\",\n    judge_secret_name: str = None,\n\
+          ) -> NamedTuple(\"outputs\", best_model=str, best_score=float):\n    import\
+          \ base64\n    import json\n    import os\n    import subprocess\n\n    import\
+          \ httpx\n    import requests\n    import torch\n    from instructlab.eval.mt_bench\
+          \ import MTBenchEvaluator\n\n    def fetch_secret(secret_name, keys):\n\
+          \        # Kubernetes API server inside the cluster\n        K8S_API_SERVER\
+          \ = \"https://kubernetes.default.svc\"\n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          \n        TOKEN_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
+          \n\n        # Fetch namespace\n        try:\n            with open(NAMESPACE_PATH,\
+          \ \"r\") as f:\n                namespace = f.read().strip()\n        except\
+          \ FileNotFoundError:\n            raise RuntimeError(\"Error reading namespace\"\
+          )\n\n        # Fetch service account token\n        try:\n            with\
+          \ open(TOKEN_PATH, \"r\") as f:\n                token = f.read().strip()\n\
+          \        except FileNotFoundError:\n            raise RuntimeError(\"Error\
+          \ reading service account token\")\n\n        headers = {\"Authorization\"\
+          : f\"Bearer {token}\", \"Accept\": \"application/json\"}\n        verify_tls\
+          \ = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\n        url\
+          \ = f\"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}\"\
+          \n        response = requests.get(url, headers=headers, verify=verify_tls)\n\
+          \n        if response.status_code == 200:\n            secret_data = response.json().get(\"\
+          data\", {})\n            return [base64.b64decode(secret_data[key]).decode()\
+          \ for key in keys]\n        else:\n            raise RuntimeError(\n   \
+          \             f\"Error fetching secret: {response.status_code} {response.text}\"\
+          \n            )\n\n    if judge_secret_name is None:\n        judge_api_key\
+          \ = os.getenv(\"JUDGE_API_KEY\", \"\")\n        judge_model_name = os.getenv(\"\
+          JUDGE_NAME\")\n        judge_endpoint = os.getenv(\"JUDGE_ENDPOINT\")\n\
+          \    else:\n        print(\"Eval Judge secret specified, fetching...\")\n\
+          \        judge_api_key, judge_model_name, judge_endpoint = fetch_secret(\n\
+          \            judge_secret_name, [\"api_token\", \"model_name\", \"endpoint\"\
+          ]\n        )\n        print(\"Eval Judge secret data retrieved.\")\n\n \
+          \   judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls\
+          \ = os.path.exists(judge_ca_cert_path) and (\n        os.path.getsize(judge_ca_cert_path)\
+          \ > 0\n    )\n    judge_http_client = httpx.Client(verify=judge_ca_cert_path)\
+          \ if use_tls else None\n\n    def launch_vllm(\n        model_path: str,\
+          \ gpu_count: int, retries: int = 120, delay: int = 10\n    ) -> tuple:\n\
+          \        import subprocess\n        import sys\n        import time\n\n\
+          \        import requests\n        from instructlab.model.backends.common\
+          \ import free_tcp_ipv4_port\n\n        free_port = free_tcp_ipv4_port(\"\
+          127.0.0.1\")\n        port = str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\
+          \n\n        command = [\n            sys.executable,\n            \"-m\"\
+          ,\n            \"vllm.entrypoints.openai.api_server\",\n            \"--port\"\
           ,\n            port,\n            \"--model\",\n            model_path,\n\
           \        ]\n        if gpu_count > 0:\n            command += [\n      \
           \          \"--tensor-parallel-size\",\n                str(gpu_count),\n\
@@ -1575,24 +1630,48 @@ deploymentSpec:
           \ *\n\ndef sdg_op(\n    num_instructions_to_generate: int,\n    pipeline:\
           \ str,\n    repo_branch: Optional[str],\n    repo_pr: Optional[int],\n \
           \   taxonomy_path: str = \"/data/taxonomy\",\n    sdg_path: str = \"/data/sdg\"\
-          ,\n    sdg_sampling_size: float = 1.0,\n):\n    import os\n    import shutil\n\
-          \    import tempfile\n\n    import instructlab.sdg\n    import openai\n\
-          \    import xdg_base_dirs\n    import yaml\n\n    api_key = os.getenv(\"\
-          api_key\")\n    model = os.getenv(\"model\")\n    endpoint = os.getenv(\"\
-          endpoint\")\n\n    sdg_ca_cert_path = os.getenv(\"SDG_CA_CERT_PATH\")\n\
-          \    use_tls = os.path.exists(sdg_ca_cert_path) and (\n        os.path.getsize(sdg_ca_cert_path)\
-          \ > 0\n    )\n    if use_tls:\n        import httpx\n\n        custom_http_client\
-          \ = httpx.Client(verify=sdg_ca_cert_path)\n        client = openai.OpenAI(\n\
-          \            base_url=endpoint, api_key=api_key, http_client=custom_http_client\n\
-          \        )\n    else:\n        client = openai.OpenAI(base_url=endpoint,\
-          \ api_key=api_key)\n\n    taxonomy_base = \"main\" if repo_branch or (repo_pr\
-          \ and int(repo_pr) > 0) else \"empty\"\n\n    print(\"Generating synthetic\
-          \ dataset for:\")\n    print()\n    print(\n        instructlab.sdg.utils.taxonomy.read_taxonomy(\n\
-          \            taxonomy_path, taxonomy_base, document_output_dir=f\"{sdg_path}/documents\"\
-          \n        )\n    )\n\n    # Generate synthetic dataset\n    # 1.0 is the\
-          \ default size\n    if sdg_sampling_size == 1.0:\n        # generate_data\
-          \ has a magic word for its taxonomy_base argument - 'empty'\n        # it\
-          \ allows generating from the whole repo, see:\n        # https://github.com/instructlab/sdg/blob/c6a9e74a1618b1077cd38e713b8aaed8b7c0c8ce/src/instructlab/sdg/utils/taxonomy.py#L230\n\
+          ,\n    sdg_sampling_size: float = 1.0,\n    sdg_secret_name: str = None,\n\
+          ):\n    import base64\n    import os\n    import shutil\n    import tempfile\n\
+          \n    import instructlab.sdg\n    import openai\n    import requests\n \
+          \   import xdg_base_dirs\n    import yaml\n\n    def fetch_secret(secret_name,\
+          \ keys):\n        # Kubernetes API server inside the cluster\n        K8S_API_SERVER\
+          \ = \"https://kubernetes.default.svc\"\n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          \n        TOKEN_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
+          \n\n        # Fetch namespace\n        try:\n            with open(NAMESPACE_PATH,\
+          \ \"r\") as f:\n                namespace = f.read().strip()\n        except\
+          \ FileNotFoundError:\n            raise RuntimeError(\"Error reading namespace\"\
+          )\n\n        # Fetch service account token\n        try:\n            with\
+          \ open(TOKEN_PATH, \"r\") as f:\n                token = f.read().strip()\n\
+          \        except FileNotFoundError:\n            raise RuntimeError(\"Error\
+          \ reading service account token\")\n\n        headers = {\"Authorization\"\
+          : f\"Bearer {token}\", \"Accept\": \"application/json\"}\n        verify_tls\
+          \ = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\n        url\
+          \ = f\"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}\"\
+          \n        response = requests.get(url, headers=headers, verify=verify_tls)\n\
+          \n        if response.status_code == 200:\n            secret_data = response.json().get(\"\
+          data\", {})\n            return [base64.b64decode(secret_data[key]).decode()\
+          \ for key in keys]\n        else:\n            raise RuntimeError(\n   \
+          \             f\"Error fetching secret: {response.status_code} {response.text}\"\
+          \n            )\n\n    if sdg_secret_name is None:\n        api_key = os.getenv(\"\
+          api_key\")\n        model = os.getenv(\"model\")\n        endpoint = os.getenv(\"\
+          endpoint\")\n    else:\n        print(\"SDG Teacher secret specified, fetching...\"\
+          )\n        api_key, model, endpoint = fetch_secret(\n            sdg_secret_name,\
+          \ [\"api_token\", \"model_name\", \"endpoint\"]\n        )\n        print(\"\
+          SDG Teacher secret data retrieved.\")\n\n    sdg_ca_cert_path = os.getenv(\"\
+          SDG_CA_CERT_PATH\")\n    use_tls = os.path.exists(sdg_ca_cert_path) and\
+          \ (\n        os.path.getsize(sdg_ca_cert_path) > 0\n    )\n    if use_tls:\n\
+          \        import httpx\n\n        custom_http_client = httpx.Client(verify=sdg_ca_cert_path)\n\
+          \        client = openai.OpenAI(\n            base_url=endpoint, api_key=api_key,\
+          \ http_client=custom_http_client\n        )\n    else:\n        client =\
+          \ openai.OpenAI(base_url=endpoint, api_key=api_key)\n\n    taxonomy_base\
+          \ = \"main\" if repo_branch or (repo_pr and int(repo_pr) > 0) else \"empty\"\
+          \n\n    print(\"Generating synthetic dataset for:\")\n    print()\n    print(\n\
+          \        instructlab.sdg.utils.taxonomy.read_taxonomy(\n            taxonomy_path,\
+          \ taxonomy_base, document_output_dir=f\"{sdg_path}/documents\"\n       \
+          \ )\n    )\n\n    # Generate synthetic dataset\n    # 1.0 is the default\
+          \ size\n    if sdg_sampling_size == 1.0:\n        # generate_data has a\
+          \ magic word for its taxonomy_base argument - 'empty'\n        # it allows\
+          \ generating from the whole repo, see:\n        # https://github.com/instructlab/sdg/blob/c6a9e74a1618b1077cd38e713b8aaed8b7c0c8ce/src/instructlab/sdg/utils/taxonomy.py#L230\n\
           \        instructlab.sdg.generate_data(\n            client=client,\n  \
           \          num_instructions_to_generate=num_instructions_to_generate,\n\
           \            output_dir=sdg_path,\n            taxonomy=taxonomy_path,\n\
@@ -1708,8 +1787,7 @@ root:
               runtimeValue:
                 constant: -sdg
             size:
-              runtimeValue:
-                constant: 10Gi
+              componentInputParameter: k8s_storage_size
             storage_class_name:
               componentInputParameter: k8s_storage_class_name
         taskInfo:
@@ -1729,8 +1807,7 @@ root:
               runtimeValue:
                 constant: -model-cache
             size:
-              runtimeValue:
-                constant: 100Gi
+              componentInputParameter: k8s_storage_size
             storage_class_name:
               componentInputParameter: k8s_storage_class_name
         taskInfo:
@@ -1750,8 +1827,7 @@ root:
               runtimeValue:
                 constant: -output
             size:
-              runtimeValue:
-                constant: 100Gi
+              componentInputParameter: k8s_storage_size
             storage_class_name:
               componentInputParameter: k8s_storage_class_name
         taskInfo:
@@ -2094,6 +2170,8 @@ root:
                 constant: /output/phase_2/model/hf_format/candidate_model
             few_shots:
               componentInputParameter: final_eval_few_shots
+            judge_secret_name:
+              componentInputParameter: eval_judge_secret
             max_workers:
               componentInputParameter: final_eval_max_workers
             merge_system_user_message:
@@ -2114,6 +2192,8 @@ root:
             accelerator_type:
               runtimeValue:
                 constant: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
+            judge_secret_name:
+              componentInputParameter: eval_judge_secret
             max_workers:
               componentInputParameter: mt_bench_max_workers
             merge_system_user_message:
@@ -2144,6 +2224,8 @@ root:
               componentInputParameter: sdg_repo_pr
             sdg_sampling_size:
               componentInputParameter: sdg_sample_size
+            sdg_secret_name:
+              componentInputParameter: sdg_teacher_secret
         taskInfo:
           name: sdg-op
       sdg-to-artifact-op:
@@ -2225,6 +2307,12 @@ root:
         defaultValue: standard
         description: A Kubernetes StorageClass name for persistent volumes. Selected
           StorageClass must support RWX PersistentVolumes.
+        isOptional: true
+        parameterType: STRING
+      k8s_storage_size:
+        defaultValue: 100Gi
+        description: The storage size of the persistent volume used for data passing
+          within the pipeline.
         isOptional: true
         parameterType: STRING
       mt_bench_max_workers:
@@ -2513,13 +2601,6 @@ platforms:
               outputParameterKey: name
               producerTask: createpvc-3
         exec-run-final-eval-op:
-          configMapAsEnv:
-          - configMapName: judge-server
-            keyToEnv:
-            - configMapKey: endpoint
-              envVar: JUDGE_ENDPOINT
-            - configMapKey: model
-              envVar: JUDGE_NAME
           configMapAsVolume:
           - configMapName: judge-server
             mountPath: /tmp/cert
@@ -2537,19 +2618,7 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc-2
-          secretAsEnv:
-          - keyToEnv:
-            - envVar: JUDGE_API_KEY
-              secretKey: api_key
-            secretName: judge-server
         exec-run-mt-bench-op:
-          configMapAsEnv:
-          - configMapName: judge-server
-            keyToEnv:
-            - configMapKey: endpoint
-              envVar: JUDGE_ENDPOINT
-            - configMapKey: model
-              envVar: JUDGE_NAME
           configMapAsVolume:
           - configMapName: judge-server
             mountPath: /tmp/cert
@@ -2559,19 +2628,7 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc-3
-          secretAsEnv:
-          - keyToEnv:
-            - envVar: JUDGE_API_KEY
-              secretKey: api_key
-            secretName: judge-server
         exec-sdg-op:
-          configMapAsEnv:
-          - configMapName: teacher-server
-            keyToEnv:
-            - configMapKey: endpoint
-              envVar: endpoint
-            - configMapKey: model
-              envVar: model
           configMapAsVolume:
           - configMapName: teacher-server
             mountPath: /tmp/cert
@@ -2581,11 +2638,6 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc
-          secretAsEnv:
-          - keyToEnv:
-            - envVar: api_key
-              secretKey: api_key
-            secretName: teacher-server
         exec-sdg-to-artifact-op:
           pvcMount:
           - mountPath: /data

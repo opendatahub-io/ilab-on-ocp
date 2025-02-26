@@ -58,19 +58,62 @@ def sdg_op(
     taxonomy_path: str = "/data/taxonomy",
     sdg_path: str = "/data/sdg",
     sdg_sampling_size: float = 1.0,
+    sdg_secret_name: str = None,
 ):
+    import base64
     import os
     import shutil
     import tempfile
 
     import instructlab.sdg
     import openai
+    import requests
     import xdg_base_dirs
     import yaml
 
-    api_key = os.getenv("api_key")
-    model = os.getenv("model")
-    endpoint = os.getenv("endpoint")
+    def fetch_secret(secret_name, keys):
+        # Kubernetes API server inside the cluster
+        K8S_API_SERVER = "https://kubernetes.default.svc"
+        NAMESPACE_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+        TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+        # Fetch namespace
+        try:
+            with open(NAMESPACE_PATH, "r") as f:
+                namespace = f.read().strip()
+        except FileNotFoundError:
+            raise RuntimeError("Error reading namespace")
+
+        # Fetch service account token
+        try:
+            with open(TOKEN_PATH, "r") as f:
+                token = f.read().strip()
+        except FileNotFoundError:
+            raise RuntimeError("Error reading service account token")
+
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+        verify_tls = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        url = f"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}"
+        response = requests.get(url, headers=headers, verify=verify_tls)
+
+        if response.status_code == 200:
+            secret_data = response.json().get("data", {})
+            return [base64.b64decode(secret_data[key]).decode() for key in keys]
+        else:
+            raise RuntimeError(
+                f"Error fetching secret: {response.status_code} {response.text}"
+            )
+
+    if sdg_secret_name is None:
+        api_key = os.getenv("api_key")
+        model = os.getenv("model")
+        endpoint = os.getenv("endpoint")
+    else:
+        print("SDG Teacher secret specified, fetching...")
+        api_key, model, endpoint = fetch_secret(
+            sdg_secret_name, ["api_token", "model_name", "endpoint"]
+        )
+        print("SDG Teacher secret data retrieved.")
 
     sdg_ca_cert_path = os.getenv("SDG_CA_CERT_PATH")
     use_tls = os.path.exists(sdg_ca_cert_path) and (

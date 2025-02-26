@@ -124,6 +124,7 @@ def ilab_pipeline(
     eval_judge_secret: str = "judge-secret",
     # Other options
     k8s_storage_class_name: str = "standard",  # FIXME: https://github.com/kubeflow/pipelines/issues/11396, https://issues.redhat.com/browse/RHOAIRFE-470
+    k8s_storage_size: str = "100Gi",
 ):
     """InstructLab pipeline
 
@@ -179,13 +180,14 @@ def ilab_pipeline(
         eval_judge_secret: General evaluation parameter: The name of the k8s secret key holding access credentials to the judge server.
 
         k8s_storage_class_name: A Kubernetes StorageClass name for persistent volumes. Selected StorageClass must support RWX PersistentVolumes.
+        k8s_storage_size: The storage size of the persistent volume used for data passing within the pipeline.
     """
 
     # SDG stage
     sdg_input_pvc_task = CreatePVC(
         pvc_name_suffix="-sdg",
         access_modes=["ReadWriteMany"],
-        size="10Gi",
+        size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
     git_clone_task = git_clone_op(
@@ -213,13 +215,10 @@ def ilab_pipeline(
         repo_branch=sdg_repo_branch,
         repo_pr=sdg_repo_pr,
         sdg_sampling_size=sdg_sample_size,
+        sdg_secret_name=sdg_teacher_secret,
     )
     sdg_task.set_env_variable("HOME", "/tmp")
     sdg_task.set_env_variable("HF_HOME", "/tmp")
-    use_config_map_as_env(
-        sdg_task, TEACHER_CONFIG_MAP, dict(endpoint="endpoint", model="model")
-    )
-    use_secret_as_env(sdg_task, TEACHER_SECRET, {"api_key": "api_key"})
     use_config_map_as_volume(sdg_task, TEACHER_CONFIG_MAP, mount_path=SDG_CA_CERT_PATH)
     sdg_task.set_env_variable(
         SDG_CA_CERT_ENV_VAR_NAME, os.path.join(SDG_CA_CERT_PATH, SDG_CA_CERT_CM_KEY)
@@ -260,7 +259,7 @@ def ilab_pipeline(
     model_pvc_task = CreatePVC(
         pvc_name_suffix="-model-cache",
         access_modes=["ReadWriteMany"],
-        size="100Gi",
+        size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
 
@@ -309,7 +308,7 @@ def ilab_pipeline(
     output_pvc_task = CreatePVC(
         pvc_name_suffix="-output",
         access_modes=["ReadWriteMany"],
-        size="100Gi",
+        size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
 
@@ -380,6 +379,7 @@ def ilab_pipeline(
         models_folder="/output/phase_2/model/hf_format",
         max_workers=mt_bench_max_workers,
         merge_system_user_message=mt_bench_merge_system_user_message,
+        judge_secret_name=eval_judge_secret,
     )
     mount_pvc(
         task=run_mt_bench_task,
@@ -392,12 +392,6 @@ def ilab_pipeline(
     run_mt_bench_task.set_accelerator_limit(1)
     run_mt_bench_task.set_caching_options(False)
     run_mt_bench_task.after(training_phase_2)
-    use_config_map_as_env(
-        run_mt_bench_task,
-        JUDGE_CONFIG_MAP,
-        dict(endpoint="JUDGE_ENDPOINT", model="JUDGE_NAME"),
-    )
-    use_secret_as_env(run_mt_bench_task, JUDGE_SECRET, {"api_key": "JUDGE_API_KEY"})
 
     use_config_map_as_volume(
         run_mt_bench_task, JUDGE_CONFIG_MAP, mount_path=JUDGE_CA_CERT_PATH
@@ -420,6 +414,7 @@ def ilab_pipeline(
         merge_system_user_message=final_eval_merge_system_user_message,
         few_shots=final_eval_few_shots,
         batch_size=final_eval_batch_size,
+        judge_secret_name=eval_judge_secret,
     )
     mount_pvc(
         task=final_eval_task, pvc_name=output_pvc_task.output, mount_path="/output"
@@ -435,19 +430,11 @@ def ilab_pipeline(
         mount_path="/model",
     )
 
-    use_config_map_as_env(
-        final_eval_task,
-        JUDGE_CONFIG_MAP,
-        dict(endpoint="JUDGE_ENDPOINT", model="JUDGE_NAME"),
-    )
-
     final_eval_task.set_env_variable("HOME", "/tmp")
     final_eval_task.set_env_variable("HF_HOME", "/tmp")
 
     # uncomment if updating image with same tag
     # set_image_pull_policy(final_eval_task, "Always")
-
-    use_secret_as_env(final_eval_task, JUDGE_SECRET, {"api_key": "JUDGE_API_KEY"})
 
     use_config_map_as_volume(
         final_eval_task, JUDGE_CONFIG_MAP, mount_path=JUDGE_CA_CERT_PATH

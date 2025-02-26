@@ -404,7 +404,7 @@ dependencies = [
 requires-dist = [
     { name = "click", specifier = ">=8.1.7" },
     { name = "jinja2", specifier = ">=3.1.4" },
-    { name = "kfp", specifier = "==2.9.0" },
+    { name = "kfp", specifier = "==2.11.0" },
     { name = "kfp-kubernetes", specifier = ">=1.4.0" },
     { name = "kubeflow-training", specifier = "==1.8.1" },
     { name = "kubernetes", specifier = "==30.1.0" },
@@ -428,7 +428,7 @@ wheels = [
 
 [[package]]
 name = "kfp"
-version = "2.9.0"
+version = "2.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -445,7 +445,7 @@ dependencies = [
     { name = "tabulate" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/37/cea6a84fb7d5c498a3f982908d167850bf41685c6255cbc0990e26dbda59/kfp-2.9.0.tar.gz", hash = "sha256:936b34261d7356f5f1960d07d12632a84f36f928e14a72cea7c092f2a224de7d", size = 595569 }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/23/f2cbf26c53585c45e02156ea68547f97c1880dfd63377b059d4c0305215c/kfp-2.11.0.tar.gz", hash = "sha256:7195019246f800fb842bb071c8d3a106ca3d2e812540f90a6b23c3ed19207ae5", size = 345389 }
 
 [[package]]
 name = "kfp-kubernetes"
@@ -459,13 +459,13 @@ sdist = { url = "https://files.pythonhosted.org/packages/78/92/5df7b43e06329132d
 
 [[package]]
 name = "kfp-pipeline-spec"
-version = "0.4.0"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "protobuf" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/d7/422c6e40880a15745eaebf74b5ea9a9bfd8e4d3a62cbb34022917e216468/kfp_pipeline_spec-0.4.0-py3-none-any.whl", hash = "sha256:5384e710aef8268eb20ee147b2a0a6cfc3b0cbeef037cad89f46ab877375e1aa", size = 8998 },
+    { url = "https://files.pythonhosted.org/packages/21/c4/5a42b32bddae9884b0ab23135f39e49ddb510b56ba9990757c6f873b87ae/kfp_pipeline_spec-0.6.0-py3-none-any.whl", hash = "sha256:9e319b62eaa54c6790a96f796d34f071458c9cae9585c662629eb090688555a7", size = 9081 },
 ]
 
 [[package]]

@@ -17,18 +17,62 @@ def run_mt_bench_op(
     max_workers: str,
     models_folder: str,
     output_path: str = "/output/mt_bench_data.json",
+    judge_secret_name: str = None,
 ) -> NamedTuple("outputs", best_model=str, best_score=float):
+    import base64
     import json
     import os
     import subprocess
 
     import httpx
+    import requests
     import torch
     from instructlab.eval.mt_bench import MTBenchEvaluator
 
-    judge_api_key = os.getenv("JUDGE_API_KEY", "")
-    judge_model_name = os.getenv("JUDGE_NAME")
-    judge_endpoint = os.getenv("JUDGE_ENDPOINT")
+    def fetch_secret(secret_name, keys):
+        # Kubernetes API server inside the cluster
+        K8S_API_SERVER = "https://kubernetes.default.svc"
+        NAMESPACE_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+        TOKEN_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+        # Fetch namespace
+        try:
+            with open(NAMESPACE_PATH, "r") as f:
+                namespace = f.read().strip()
+        except FileNotFoundError:
+            raise RuntimeError("Error reading namespace")
+
+        # Fetch service account token
+        try:
+            with open(TOKEN_PATH, "r") as f:
+                token = f.read().strip()
+        except FileNotFoundError:
+            raise RuntimeError("Error reading service account token")
+
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+        verify_tls = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        url = f"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}"
+        response = requests.get(url, headers=headers, verify=verify_tls)
+
+        if response.status_code == 200:
+            secret_data = response.json().get("data", {})
+            return [base64.b64decode(secret_data[key]).decode() for key in keys]
+        else:
+            raise RuntimeError(
+                f"Error fetching secret: {response.status_code} {response.text}"
+            )
+
+    if judge_secret_name is None:
+        judge_api_key = os.getenv("JUDGE_API_KEY", "")
+        judge_model_name = os.getenv("JUDGE_NAME")
+        judge_endpoint = os.getenv("JUDGE_ENDPOINT")
+    else:
+        print("Eval Judge secret specified, fetching...")
+        judge_api_key, judge_model_name, judge_endpoint = fetch_secret(
+            judge_secret_name, ["api_token", "model_name", "endpoint"]
+        )
+        print("Eval Judge secret data retrieved.")
+
     judge_ca_cert_path = os.getenv("JUDGE_CA_CERT_PATH")
     use_tls = os.path.exists(judge_ca_cert_path) and (
         os.path.getsize(judge_ca_cert_path) > 0
