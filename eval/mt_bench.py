@@ -55,8 +55,13 @@ def run_mt_bench_op(
         response = requests.get(url, headers=headers, verify=verify_tls)
 
         if response.status_code == 200:
+            print(f"Successfully fetched secret {secret_name}")
             secret_data = response.json().get("data", {})
-            return [base64.b64decode(secret_data[key]).decode() for key in keys]
+            values = []
+            for key in keys:
+                if key in secret_data:
+                    values.append(base64.b64decode(secret_data[key]).decode())
+            return values
         else:
             raise RuntimeError(
                 f"Error fetching secret: {response.status_code} {response.text}"

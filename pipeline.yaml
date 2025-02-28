@@ -292,20 +292,6 @@ components:
           artifactType:
             schemaTitle: system.Metrics
             schemaVersion: 0.0.1
-  comp-git-clone-op:
-    executorLabel: exec-git-clone-op
-    inputDefinitions:
-      parameters:
-        repo_branch:
-          parameterType: STRING
-        repo_pr:
-          parameterType: NUMBER_INTEGER
-        repo_url:
-          parameterType: STRING
-        taxonomy_path:
-          defaultValue: /data/taxonomy
-          isOptional: true
-          parameterType: STRING
   comp-importer:
     executorLabel: exec-importer
     inputDefinitions:
@@ -620,6 +606,9 @@ components:
           parameterType: STRING
         repo_pr:
           parameterType: NUMBER_INTEGER
+        repo_url:
+          isOptional: true
+          parameterType: STRING
         sdg_path:
           defaultValue: /data/sdg
           isOptional: true
@@ -633,6 +622,9 @@ components:
           parameterType: STRING
         taxonomy_path:
           defaultValue: /data/taxonomy
+          isOptional: true
+          parameterType: STRING
+        taxonomy_repo_secret:
           isOptional: true
           parameterType: STRING
   comp-sdg-to-artifact-op:
@@ -797,35 +789,6 @@ deploymentSpec:
           \                f\"{report}_base_model_score\", report_data[\"base_model_score\"\
           ]\n            )\n\n"
         image: quay.io/modh/odh-generic-data-science-notebook@sha256:72c1d095adbda216a1f1b4b6935e3e2c717cbc58964009464ccd36c0b98312b2
-    exec-git-clone-op:
-      container:
-        args:
-        - "\n            # Increase logging verbosity\n            set -x &&\n\n \
-          \           # Add TLS Parameters if CA Cert exists and is non-zero size\n\
-          \            ADDITIONAL_CLONE_PARAMS=\"\"\n            if [ -s \"$TAXONOMY_CA_CERT_PATH\"\
-          \ ]; then\n                ADDITIONAL_CLONE_PARAMS=\"-c http.sslVerify=true\
-          \ -c http.sslCAInfo=$TAXONOMY_CA_CERT_PATH\"\n            fi\n\n       \
-          \     # Clone Taxonomy Repo\n            git clone $ADDITIONAL_CLONE_PARAMS\
-          \ {{$.inputs.parameters['repo_url']}} {{$.inputs.parameters['taxonomy_path']}}\
-          \ &&\n            cd {{$.inputs.parameters['taxonomy_path']}} &&\n\n   \
-          \         # Run additional configuration if TLS certs provided\n       \
-          \     if [ -s \"$TAXONOMY_CA_CERT_PATH\" ]; then\n                git config\
-          \ http.sslVerify true &&\n                git config http.sslCAInfo $TAXONOMY_CA_CERT_PATH\n\
-          \            fi &&\n\n            # Checkout and use taxonomy repo branch\
-          \ or PR if specified\n            if [ -n \"{{$.inputs.parameters['repo_branch']}}\"\
-          \ ]; then\n                git fetch origin {{$.inputs.parameters['repo_branch']}}\
-          \ && git checkout {{$.inputs.parameters['repo_branch']}};\n            elif\
-          \ [ -n \"{{$.inputs.parameters['repo_pr']}}\" ] && [ {{$.inputs.parameters['repo_pr']}}\
-          \ -gt 0 ]; then\n                git fetch origin pull/{{$.inputs.parameters['repo_pr']}}/head:{{$.inputs.parameters['repo_pr']}}\
-          \ && git checkout {{$.inputs.parameters['repo_pr']}};\n            fi\n\
-          \            "
-        command:
-        - /bin/sh
-        - -c
-        env:
-        - name: TAXONOMY_CA_CERT_PATH
-          value: /tmp/cert/taxonomy-ca.crt
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
     exec-importer:
       importer:
         artifactUri:
@@ -1359,10 +1322,12 @@ deploymentSpec:
           \ = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\n        url\
           \ = f\"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}\"\
           \n        response = requests.get(url, headers=headers, verify=verify_tls)\n\
-          \n        if response.status_code == 200:\n            secret_data = response.json().get(\"\
-          data\", {})\n            return [base64.b64decode(secret_data[key]).decode()\
-          \ for key in keys]\n        else:\n            raise RuntimeError(\n   \
-          \             f\"Error fetching secret: {response.status_code} {response.text}\"\
+          \n        if response.status_code == 200:\n            print(f\"Successfully\
+          \ fetched secret {secret_name}\")\n            secret_data = response.json().get(\"\
+          data\", {})\n            values = []\n            for key in keys:\n   \
+          \             if key in secret_data:\n                    values.append(base64.b64decode(secret_data[key]).decode())\n\
+          \            return values\n        else:\n            raise RuntimeError(\n\
+          \                f\"Error fetching secret: {response.status_code} {response.text}\"\
           \n            )\n\n    if judge_secret_name is None:\n        judge_api_key\
           \ = os.getenv(\"JUDGE_API_KEY\", \"\")\n        judge_model_name = os.getenv(\"\
           JUDGE_NAME\")\n        judge_endpoint = os.getenv(\"JUDGE_ENDPOINT\")\n\
@@ -1495,10 +1460,12 @@ deploymentSpec:
           \ = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\n        url\
           \ = f\"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}\"\
           \n        response = requests.get(url, headers=headers, verify=verify_tls)\n\
-          \n        if response.status_code == 200:\n            secret_data = response.json().get(\"\
-          data\", {})\n            return [base64.b64decode(secret_data[key]).decode()\
-          \ for key in keys]\n        else:\n            raise RuntimeError(\n   \
-          \             f\"Error fetching secret: {response.status_code} {response.text}\"\
+          \n        if response.status_code == 200:\n            print(f\"Successfully\
+          \ fetched secret {secret_name}\")\n            secret_data = response.json().get(\"\
+          data\", {})\n            values = []\n            for key in keys:\n   \
+          \             if key in secret_data:\n                    values.append(base64.b64decode(secret_data[key]).decode())\n\
+          \            return values\n        else:\n            raise RuntimeError(\n\
+          \                f\"Error fetching secret: {response.status_code} {response.text}\"\
           \n            )\n\n    if judge_secret_name is None:\n        judge_api_key\
           \ = os.getenv(\"JUDGE_API_KEY\", \"\")\n        judge_model_name = os.getenv(\"\
           JUDGE_NAME\")\n        judge_endpoint = os.getenv(\"JUDGE_ENDPOINT\")\n\
@@ -1631,11 +1598,14 @@ deploymentSpec:
           \ str,\n    repo_branch: Optional[str],\n    repo_pr: Optional[int],\n \
           \   taxonomy_path: str = \"/data/taxonomy\",\n    sdg_path: str = \"/data/sdg\"\
           ,\n    sdg_sampling_size: float = 1.0,\n    sdg_secret_name: str = None,\n\
-          ):\n    import base64\n    import os\n    import shutil\n    import tempfile\n\
-          \n    import instructlab.sdg\n    import openai\n    import requests\n \
-          \   import xdg_base_dirs\n    import yaml\n\n    def fetch_secret(secret_name,\
-          \ keys):\n        # Kubernetes API server inside the cluster\n        K8S_API_SERVER\
-          \ = \"https://kubernetes.default.svc\"\n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          \    taxonomy_repo_secret: str = None,\n    repo_url: str = None,\n):\n\
+          \    import base64\n    import os\n    import re\n    import shutil\n  \
+          \  import subprocess\n    import tempfile\n    import urllib.parse\n\n \
+          \   import instructlab.sdg\n    import openai\n    import requests\n   \
+          \ import xdg_base_dirs\n    import yaml\n\n    REQUEST_TIMEOUT = 30  # seconds\n\
+          \n    def fetch_secret(secret_name, keys):\n        # Kubernetes API server\
+          \ inside the cluster\n        K8S_API_SERVER = \"https://kubernetes.default.svc\"\
+          \n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
           \n        TOKEN_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
           \n\n        # Fetch namespace\n        try:\n            with open(NAMESPACE_PATH,\
           \ \"r\") as f:\n                namespace = f.read().strip()\n        except\
@@ -1643,16 +1613,103 @@ deploymentSpec:
           )\n\n        # Fetch service account token\n        try:\n            with\
           \ open(TOKEN_PATH, \"r\") as f:\n                token = f.read().strip()\n\
           \        except FileNotFoundError:\n            raise RuntimeError(\"Error\
-          \ reading service account token\")\n\n        headers = {\"Authorization\"\
-          : f\"Bearer {token}\", \"Accept\": \"application/json\"}\n        verify_tls\
-          \ = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\n        url\
-          \ = f\"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}\"\
-          \n        response = requests.get(url, headers=headers, verify=verify_tls)\n\
-          \n        if response.status_code == 200:\n            secret_data = response.json().get(\"\
-          data\", {})\n            return [base64.b64decode(secret_data[key]).decode()\
-          \ for key in keys]\n        else:\n            raise RuntimeError(\n   \
-          \             f\"Error fetching secret: {response.status_code} {response.text}\"\
-          \n            )\n\n    if sdg_secret_name is None:\n        api_key = os.getenv(\"\
+          \ reading service account token\")\n\n        # Fetch secret\n        headers\
+          \ = {\"Authorization\": f\"Bearer {token}\", \"Accept\": \"application/json\"\
+          }\n        verify_tls = \"/var/run/secrets/kubernetes.io/serviceaccount/ca.crt\"\
+          \n        url = f\"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}\"\
+          \n        response = requests.get(\n            url, headers=headers, verify=verify_tls,\
+          \ timeout=REQUEST_TIMEOUT\n        )\n\n        if response.status_code\
+          \ == 200:\n            print(f\"Successfully fetched secret {secret_name}\"\
+          )\n            secret_data = response.json().get(\"data\", {})\n       \
+          \     values = []\n            for key in keys:\n                if key\
+          \ in secret_data:\n                    values.append(base64.b64decode(secret_data[key]).decode())\n\
+          \            return values\n        else:\n            raise RuntimeError(\n\
+          \                f\"Error fetching secret: {response.status_code} {response.text}\"\
+          \n            )\n\n    # Configure Git Credentials (if provided) and environment\n\
+          \n    def exec_cmd(cmd, **kwarg):\n        if \"stdout\" in kwarg or \"\
+          stderr\" in kwarg:\n            # If stdout or stderr is explicitly set,\
+          \ remove capture_output to avoid conflicts\n            res = subprocess.run(cmd,\
+          \ text=True, **kwarg)\n        else:\n            # Default behavior (captures\
+          \ output)\n            res = subprocess.run(cmd, text=True, capture_output=True,\
+          \ **kwarg)\n        if res.stdout:\n            print(\"STDOUT:\", res.stdout)\n\
+          \        if res.stderr:\n            print(\"STDERR:\", res.stderr)\n  \
+          \      if res.returncode != 0:\n            raise RuntimeError(f\"CMD {cmd}\
+          \ failed with error code: {res.returncode}\")\n        print(f\"Command\
+          \ {cmd} succeeded.\")\n\n    def is_ssh(uri: str) -> bool:\n        \"\"\
+          \"Checks if a given Git URI is an SSH-based URL.\"\"\"\n        ssh_patterns\
+          \ = [\n            r\"^git@[\\w.-]+:.+\",\n            r\"^ssh://.+\",\n\
+          \        ]\n        return any(re.match(pattern, uri) for pattern in ssh_patterns)\n\
+          \n    def get_git_host(repo_url):\n        \"\"\"Extracts the Git host (e.g.,\
+          \ github.com, gitlab.com) from an SSH repository URL.\"\"\"\n        match\
+          \ = re.match(r\"git@([\\w.-]+):\", repo_url)\n        if match:\n      \
+          \      return match.group(1)  # Extracted host\n        raise ValueError(f\"\
+          Invalid SSH repository URL: {repo_url}\")\n\n    if not taxonomy_repo_secret:\n\
+          \        username = os.getenv(\"GIT_USERNAME\")\n        token = os.getenv(\"\
+          GIT_TOKEN\")\n        ssh_key = os.getenv(\"GIT_SSH_KEY\")\n    else:\n\
+          \        print(\"SDG Repo secret specified, fetching...\")\n        username,\
+          \ token, ssh_key = fetch_secret(\n            taxonomy_repo_secret, [\"\
+          GIT_USERNAME\", \"GIT_TOKEN\", \"GIT_SSH_KEY\"]\n        )\n        print(\"\
+          SDG Repo secret data retrieved.\")\n\n    # Whether not provided via env\
+          \ or secret\n    # Assume the repo is public\n    if not username or ssh_key:\n\
+          \        print(\"No credentials provided for taxonomy repo, assuming public\
+          \ repo...\")\n\n    ca_cert_path = os.getenv(\"SDG_CA_CERT_PATH\")\n   \
+          \ env = os.environ.copy()\n\n    # Todo(HumairAK): should be platform cert\n\
+          \    # Set custom CA certificate if provided\n    if ca_cert_path:\n   \
+          \     print(f\"SSL CA Info detected. ca cert path: {ca_cert_path}\")\n \
+          \       env[\"GIT_SSL_CAINFO\"] = ca_cert_path\n        # Consume this in\
+          \ the process execution environment\n        # This is required for read_taxonomy\
+          \ calls which\n        # Perform nested calls to git clones.\n        os.environ[\"\
+          GIT_SSL_CAINFO\"] = ca_cert_path\n\n    git_credentials_path = \"\"\n  \
+          \  ssh_key_path = \"\"\n    # Username/PAT takes precedence over ssh\n \
+          \   if username and token:\n        print(\"Configuring Git Credentials...\"\
+          )\n        # Parse the domain from the repository URL\n        parsed_url\
+          \ = urllib.parse.urlparse(repo_url)\n        git_server = parsed_url.netloc\n\
+          \n        # Set up Git credential helper\n        exec_cmd([\"git\", \"\
+          config\", \"--global\", \"credential.helper\", \"store\"], env=env)\n\n\
+          \        # Save credentials dynamically for any Git server\n        git_credentials_directory\
+          \ = os.path.expanduser(\"~/.git\")\n        # Ensure the ~/.git directory\
+          \ exists\n        os.makedirs(git_credentials_directory, mode=0o700, exist_ok=True)\n\
+          \n        git_credentials_path = f\"{git_credentials_directory}/.git-credentials\"\
+          \n        with open(git_credentials_path, \"w\") as f:\n            f.write(f\"\
+          https://{username}:{token}@{git_server}\\n\")\n\n        os.chmod(git_credentials_path,\
+          \ 0o600)\n        exec_cmd(\n            [\n                \"git\",\n \
+          \               \"config\",\n                \"--global\",\n           \
+          \     \"credential.helper\",\n                f\"store --file {git_credentials_path}\"\
+          ,\n            ],\n            env=env,\n        )\n\n        print(\"Git\
+          \ Credentials configured.\")\n\n    # Handle SSH authentication\n    elif\
+          \ is_ssh(repo_url):\n        ssh_dir = os.path.expanduser(\"~/.ssh\")\n\
+          \        # Ensure the ~/.ssh directory exists\n        os.makedirs(ssh_dir,\
+          \ mode=0o700, exist_ok=True)\n\n        # Preemptively add the key to avoid\
+          \ first use prompt.\n        git_host = get_git_host(repo_url)\n       \
+          \ print(f\"Using Git host: {git_host}\")\n        exec_cmd(\n          \
+          \  [\"ssh-keyscan\", git_host],\n            stdout=open(os.path.expanduser(\"\
+          ~/.ssh/known_hosts\"), \"a\"),\n        )\n\n        # A repo can rarely\
+          \ support anonymous ssh access (rare)\n        # So we conditionally check\
+          \ for the key.\n        if ssh_key:\n            print(\"Configuring SSH\
+          \ authentication for Git...\")\n            # Write the SSH key to a temporary\
+          \ file\n            with tempfile.NamedTemporaryFile(\n                delete=False,\
+          \ mode=\"w\", prefix=\"ssh_key_\", dir=ssh_dir, suffix=\".pem\"\n      \
+          \      ) as ssh_key_file:\n                ssh_key_file.write(ssh_key)\n\
+          \                ssh_key_path = ssh_key_file.name\n            # Ensure\
+          \ owner has r/w only, SSH may refuse\n            # keys if the file is\
+          \ too open.\n            os.chmod(ssh_key_path, 0o600)\n            # Explicitly\
+          \ direct Git to always use this SSH key\n            exec_cmd(\n       \
+          \         [\n                    \"git\",\n                    \"config\"\
+          ,\n                    \"--global\",\n                    \"core.sshCommand\"\
+          ,\n                    f\"ssh -i {ssh_key_path}\",\n                ]\n\
+          \            )\n            print(\n                f\"Git SSH authentication\
+          \ configured using temporary key at {ssh_key_path}.\"\n            )\n\n\
+          \    if not repo_url or not taxonomy_path:\n        raise RuntimeError(\n\
+          \            \"Missing either repo_url or taxonomy_path, cannot proceed\
+          \ with cloning.\"\n        )\n\n    # Clone the repository\n    exec_cmd([\"\
+          git\", \"clone\", \"-v\", repo_url, taxonomy_path], env=env)\n    print(\"\
+          Taxonomy repo cloned executed successfully!\")\n    if repo_branch:\n  \
+          \      exec_cmd([\"git\", \"checkout\", repo_branch], cwd=taxonomy_path,\
+          \ env=env)\n    elif repo_pr:\n        # Fetch pull request head\n     \
+          \   exec_cmd(\n            [\"git\", \"fetch\", \"origin\", f\"pull/{repo_pr}/head:pr-{repo_pr}\"\
+          ],\n            cwd=taxonomy_path,\n            env=env,\n        )\n  \
+          \      exec_cmd([\"git\", \"checkout\", repo_branch], cwd=taxonomy_path,\
+          \ env=env)\n\n    if sdg_secret_name is None:\n        api_key = os.getenv(\"\
           api_key\")\n        model = os.getenv(\"model\")\n        endpoint = os.getenv(\"\
           endpoint\")\n    else:\n        print(\"SDG Teacher secret specified, fetching...\"\
           )\n        api_key, model, endpoint = fetch_secret(\n            sdg_secret_name,\
@@ -1732,7 +1789,12 @@ deploymentSpec:
           \                        chunk_word_count=1000,\n                      \
           \  server_ctx_size=4096,\n                    )\n                except\
           \ Exception as e:\n                    print(f\"Failed to set precomputed\
-          \ skills data ratio: {e}\")\n                    raise\n\n"
+          \ skills data ratio: {e}\")\n                    raise\n\n    # Cleanup\
+          \ git configurations\n    if git_credentials_path and os.path.exists(git_credentials_path):\n\
+          \        os.remove(git_credentials_path)\n        print(f\"{git_credentials_path}\
+          \ deleted successfully\")\n    if ssh_key_path and os.path.exists(ssh_key_path):\n\
+          \        os.remove(ssh_key_path)\n        print(f\"{ssh_key_path} deleted\
+          \ successfully\")\n\n"
         env:
         - name: HOME
           value: /tmp
@@ -1908,22 +1970,6 @@ root:
         - run-final-eval-op
         taskInfo:
           name: generate-metrics-report-op
-      git-clone-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-git-clone-op
-        dependentTasks:
-        - createpvc
-        inputs:
-          parameters:
-            repo_branch:
-              componentInputParameter: sdg_repo_branch
-            repo_pr:
-              componentInputParameter: sdg_repo_pr
-            repo_url:
-              componentInputParameter: sdg_repo_url
-        taskInfo:
-          name: git-clone-op
       importer:
         cachingOptions:
           enableCache: true
@@ -2211,7 +2257,6 @@ root:
           name: comp-sdg-op
         dependentTasks:
         - createpvc
-        - git-clone-op
         inputs:
           parameters:
             num_instructions_to_generate:
@@ -2222,10 +2267,14 @@ root:
               componentInputParameter: sdg_repo_branch
             repo_pr:
               componentInputParameter: sdg_repo_pr
+            repo_url:
+              componentInputParameter: sdg_repo_url
             sdg_sampling_size:
               componentInputParameter: sdg_sample_size
             sdg_secret_name:
               componentInputParameter: sdg_teacher_secret
+            taxonomy_repo_secret:
+              componentInputParameter: sdg_repo_secret
         taskInfo:
           name: sdg-op
       sdg-to-artifact-op:
@@ -2235,7 +2284,6 @@ root:
           name: comp-sdg-to-artifact-op
         dependentTasks:
         - createpvc
-        - git-clone-op
         - sdg-op
         taskInfo:
           name: sdg-to-artifact-op
@@ -2255,7 +2303,6 @@ root:
           name: comp-taxonomy-to-artifact-op
         dependentTasks:
         - createpvc
-        - git-clone-op
         - sdg-op
         taskInfo:
           name: taxonomy-to-artifact-op
@@ -2548,16 +2595,6 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc-3
-        exec-git-clone-op:
-          configMapAsVolume:
-          - configMapName: teacher-server
-            mountPath: /tmp/cert
-            optional: false
-          pvcMount:
-          - mountPath: /data
-            taskOutputParameter:
-              outputParameterKey: name
-              producerTask: createpvc
         exec-knowledge-processed-data-to-artifact-op:
           pvcMount:
           - mountPath: /data

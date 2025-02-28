@@ -59,17 +59,24 @@ def sdg_op(
     sdg_path: str = "/data/sdg",
     sdg_sampling_size: float = 1.0,
     sdg_secret_name: str = None,
+    taxonomy_repo_secret: str = None,
+    repo_url: str = None,
 ):
     import base64
     import os
+    import re
     import shutil
+    import subprocess
     import tempfile
+    import urllib.parse
 
     import instructlab.sdg
     import openai
     import requests
     import xdg_base_dirs
     import yaml
+
+    REQUEST_TIMEOUT = 30  # seconds
 
     def fetch_secret(secret_name, keys):
         # Kubernetes API server inside the cluster
@@ -91,18 +98,182 @@ def sdg_op(
         except FileNotFoundError:
             raise RuntimeError("Error reading service account token")
 
+        # Fetch secret
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
         verify_tls = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
         url = f"{K8S_API_SERVER}/api/v1/namespaces/{namespace}/secrets/{secret_name}"
-        response = requests.get(url, headers=headers, verify=verify_tls)
+        response = requests.get(
+            url, headers=headers, verify=verify_tls, timeout=REQUEST_TIMEOUT
+        )
 
         if response.status_code == 200:
+            print(f"Successfully fetched secret {secret_name}")
             secret_data = response.json().get("data", {})
-            return [base64.b64decode(secret_data[key]).decode() for key in keys]
+            values = []
+            for key in keys:
+                if key in secret_data:
+                    values.append(base64.b64decode(secret_data[key]).decode())
+            return values
         else:
             raise RuntimeError(
                 f"Error fetching secret: {response.status_code} {response.text}"
             )
+
+    # Configure Git Credentials (if provided) and environment
+
+    def exec_cmd(cmd, **kwarg):
+        if "stdout" in kwarg or "stderr" in kwarg:
+            # If stdout or stderr is explicitly set, remove capture_output to avoid conflicts
+            res = subprocess.run(cmd, text=True, **kwarg)
+        else:
+            # Default behavior (captures output)
+            res = subprocess.run(cmd, text=True, capture_output=True, **kwarg)
+        if res.stdout:
+            print("STDOUT:", res.stdout)
+        if res.stderr:
+            print("STDERR:", res.stderr)
+        if res.returncode != 0:
+            raise RuntimeError(f"CMD {cmd} failed with error code: {res.returncode}")
+        print(f"Command {cmd} succeeded.")
+
+    def is_ssh(uri: str) -> bool:
+        """Checks if a given Git URI is an SSH-based URL."""
+        ssh_patterns = [
+            r"^git@[\w.-]+:.+",
+            r"^ssh://.+",
+        ]
+        return any(re.match(pattern, uri) for pattern in ssh_patterns)
+
+    def get_git_host(repo_url):
+        """Extracts the Git host (e.g., github.com, gitlab.com) from an SSH repository URL."""
+        match = re.match(r"git@([\w.-]+):", repo_url)
+        if match:
+            return match.group(1)  # Extracted host
+        raise ValueError(f"Invalid SSH repository URL: {repo_url}")
+
+    if not taxonomy_repo_secret:
+        username = os.getenv("GIT_USERNAME")
+        token = os.getenv("GIT_TOKEN")
+        ssh_key = os.getenv("GIT_SSH_KEY")
+    else:
+        print("SDG Repo secret specified, fetching...")
+        username, token, ssh_key = fetch_secret(
+            taxonomy_repo_secret, ["GIT_USERNAME", "GIT_TOKEN", "GIT_SSH_KEY"]
+        )
+        print("SDG Repo secret data retrieved.")
+
+    # Whether not provided via env or secret
+    # Assume the repo is public
+    if not username or ssh_key:
+        print("No credentials provided for taxonomy repo, assuming public repo...")
+
+    ca_cert_path = os.getenv("SDG_CA_CERT_PATH")
+    env = os.environ.copy()
+
+    # Todo(HumairAK): should be platform cert
+    # Set custom CA certificate if provided
+    if ca_cert_path:
+        print(f"SSL CA Info detected. ca cert path: {ca_cert_path}")
+        env["GIT_SSL_CAINFO"] = ca_cert_path
+        # Consume this in the process execution environment
+        # This is required for read_taxonomy calls which
+        # Perform nested calls to git clones.
+        os.environ["GIT_SSL_CAINFO"] = ca_cert_path
+
+    git_credentials_path = ""
+    ssh_key_path = ""
+    # Username/PAT takes precedence over ssh
+    if username and token:
+        print("Configuring Git Credentials...")
+        # Parse the domain from the repository URL
+        parsed_url = urllib.parse.urlparse(repo_url)
+        git_server = parsed_url.netloc
+
+        # Set up Git credential helper
+        exec_cmd(["git", "config", "--global", "credential.helper", "store"], env=env)
+
+        # Save credentials dynamically for any Git server
+        git_credentials_directory = os.path.expanduser("~/.git")
+        # Ensure the ~/.git directory exists
+        os.makedirs(git_credentials_directory, mode=0o700, exist_ok=True)
+
+        git_credentials_path = f"{git_credentials_directory}/.git-credentials"
+        with open(git_credentials_path, "w") as f:
+            f.write(f"https://{username}:{token}@{git_server}\n")
+
+        os.chmod(git_credentials_path, 0o600)
+        exec_cmd(
+            [
+                "git",
+                "config",
+                "--global",
+                "credential.helper",
+                f"store --file {git_credentials_path}",
+            ],
+            env=env,
+        )
+
+        print("Git Credentials configured.")
+
+    # Handle SSH authentication
+    elif is_ssh(repo_url):
+        ssh_dir = os.path.expanduser("~/.ssh")
+        # Ensure the ~/.ssh directory exists
+        os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+
+        # Preemptively add the key to avoid first use prompt.
+        git_host = get_git_host(repo_url)
+        print(f"Using Git host: {git_host}")
+        exec_cmd(
+            ["ssh-keyscan", git_host],
+            stdout=open(os.path.expanduser("~/.ssh/known_hosts"), "a"),
+        )
+
+        # A repo can rarely support anonymous ssh access (rare)
+        # So we conditionally check for the key.
+        if ssh_key:
+            print("Configuring SSH authentication for Git...")
+            # Write the SSH key to a temporary file
+            with tempfile.NamedTemporaryFile(
+                delete=False, mode="w", prefix="ssh_key_", dir=ssh_dir, suffix=".pem"
+            ) as ssh_key_file:
+                ssh_key_file.write(ssh_key)
+                ssh_key_path = ssh_key_file.name
+            # Ensure owner has r/w only, SSH may refuse
+            # keys if the file is too open.
+            os.chmod(ssh_key_path, 0o600)
+            # Explicitly direct Git to always use this SSH key
+            exec_cmd(
+                [
+                    "git",
+                    "config",
+                    "--global",
+                    "core.sshCommand",
+                    f"ssh -i {ssh_key_path}",
+                ]
+            )
+            print(
+                f"Git SSH authentication configured using temporary key at {ssh_key_path}."
+            )
+
+    if not repo_url or not taxonomy_path:
+        raise RuntimeError(
+            "Missing either repo_url or taxonomy_path, cannot proceed with cloning."
+        )
+
+    # Clone the repository
+    exec_cmd(["git", "clone", "-v", repo_url, taxonomy_path], env=env)
+    print("Taxonomy repo cloned executed successfully!")
+    if repo_branch:
+        exec_cmd(["git", "checkout", repo_branch], cwd=taxonomy_path, env=env)
+    elif repo_pr:
+        # Fetch pull request head
+        exec_cmd(
+            ["git", "fetch", "origin", f"pull/{repo_pr}/head:pr-{repo_pr}"],
+            cwd=taxonomy_path,
+            env=env,
+        )
+        exec_cmd(["git", "checkout", repo_branch], cwd=taxonomy_path, env=env)
 
     if sdg_secret_name is None:
         api_key = os.getenv("api_key")
@@ -241,6 +412,14 @@ def sdg_op(
                 except Exception as e:
                     print(f"Failed to set precomputed skills data ratio: {e}")
                     raise
+
+    # Cleanup git configurations
+    if git_credentials_path and os.path.exists(git_credentials_path):
+        os.remove(git_credentials_path)
+        print(f"{git_credentials_path} deleted successfully")
+    if ssh_key_path and os.path.exists(ssh_key_path):
+        os.remove(ssh_key_path)
+        print(f"{ssh_key_path} deleted successfully")
 
 
 @dsl.container_component

@@ -11,7 +11,6 @@ from kfp.kubernetes import (
     CreatePVC,
     DeletePVC,
     mount_pvc,
-    use_config_map_as_env,
     use_config_map_as_volume,
     use_secret_as_env,
     use_secret_as_volume,
@@ -190,24 +189,6 @@ def ilab_pipeline(
         size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
-    git_clone_task = git_clone_op(
-        repo_branch=sdg_repo_branch,
-        repo_pr=sdg_repo_pr if sdg_repo_pr and sdg_repo_pr > 0 else None,
-        repo_url=sdg_repo_url,
-    )
-    use_config_map_as_volume(
-        git_clone_task, TEACHER_CONFIG_MAP, mount_path=TAXONOMY_CA_CERT_PATH
-    )
-    git_clone_task.set_env_variable(
-        TAXONOMY_CA_CERT_ENV_VAR_NAME,
-        os.path.join(TAXONOMY_CA_CERT_PATH, TAXONOMY_CA_CERT_CM_KEY),
-    )
-    mount_pvc(
-        task=git_clone_task,
-        pvc_name=sdg_input_pvc_task.output,
-        mount_path="/data",
-    )
-    git_clone_task.set_caching_options(False)
 
     sdg_task = sdg_op(
         num_instructions_to_generate=sdg_scale_factor,
@@ -216,6 +197,8 @@ def ilab_pipeline(
         repo_pr=sdg_repo_pr,
         sdg_sampling_size=sdg_sample_size,
         sdg_secret_name=sdg_teacher_secret,
+        repo_url=sdg_repo_url,
+        taxonomy_repo_secret=sdg_repo_secret,
     )
     sdg_task.set_env_variable("HOME", "/tmp")
     sdg_task.set_env_variable("HF_HOME", "/tmp")
@@ -224,7 +207,6 @@ def ilab_pipeline(
         SDG_CA_CERT_ENV_VAR_NAME, os.path.join(SDG_CA_CERT_PATH, SDG_CA_CERT_CM_KEY)
     )
 
-    sdg_task.after(git_clone_task)
     mount_pvc(
         task=sdg_task,
         pvc_name=sdg_input_pvc_task.output,
@@ -234,14 +216,14 @@ def ilab_pipeline(
 
     # Upload "sdg" and "taxonomy" artifacts to S3 without blocking the rest of the workflow
     taxonomy_to_artifact_task = taxonomy_to_artifact_op()
-    taxonomy_to_artifact_task.after(git_clone_task, sdg_task)
+    taxonomy_to_artifact_task.after(sdg_task)
     mount_pvc(
         task=taxonomy_to_artifact_task,
         pvc_name=sdg_input_pvc_task.output,
         mount_path="/data",
     )
     sdg_to_artifact_task = sdg_to_artifact_op()
-    sdg_to_artifact_task.after(git_clone_task, sdg_task)
+    sdg_to_artifact_task.after(sdg_task)
     mount_pvc(
         task=sdg_to_artifact_task,
         pvc_name=sdg_input_pvc_task.output,
