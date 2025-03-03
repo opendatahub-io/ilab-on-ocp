@@ -22,10 +22,16 @@ def git_clone_op(
             # Increase logging verbosity
             set -x &&
 
+            # Set Preferred CA Cert
+            CA_CERT_PATH=$TAXONOMY_CA_CERT_PATH
+            if [ -s "DSP_TRUSTED_CA_CERT_PATH" ]; then
+                CA_CERT_PATH=$DSP_TRUSTED_CA_CERT_PATH
+            fi
+
             # Add TLS Parameters if CA Cert exists and is non-zero size
             ADDITIONAL_CLONE_PARAMS=""
-            if [ -s "$TAXONOMY_CA_CERT_PATH" ]; then
-                ADDITIONAL_CLONE_PARAMS="-c http.sslVerify=true -c http.sslCAInfo=$TAXONOMY_CA_CERT_PATH"
+            if [ -s "$CA_CERT_PATH" ]; then
+                ADDITIONAL_CLONE_PARAMS="-c http.sslVerify=true -c http.sslCAInfo=$CA_CERT_PATH"
             fi
 
             # Clone Taxonomy Repo
@@ -33,9 +39,9 @@ def git_clone_op(
             cd {taxonomy_path} &&
 
             # Run additional configuration if TLS certs provided
-            if [ -s "$TAXONOMY_CA_CERT_PATH" ]; then
+            if [ -s "$CA_CERT_PATH" ]; then
                 git config http.sslVerify true &&
-                git config http.sslCAInfo $TAXONOMY_CA_CERT_PATH
+                git config http.sslCAInfo $CA_CERT_PATH
             fi &&
 
             # Checkout and use taxonomy repo branch or PR if specified
@@ -73,13 +79,18 @@ def sdg_op(
     endpoint = os.getenv("endpoint")
 
     sdg_ca_cert_path = os.getenv("SDG_CA_CERT_PATH")
-    use_tls = os.path.exists(sdg_ca_cert_path) and (
-        os.path.getsize(sdg_ca_cert_path) > 0
-    )
+    dsp_ca_cert_path = os.getenv("DSP_TRUSTED_CA_CERT_PATH")
+
+    dsp_ca_exists = os.path.isfile(dsp_ca_cert_path) and (os.path.getsize(dsp_ca_cert_path) > 0)
+    sdg_ca_exists = os.path.isfile(sdg_ca_cert_path) and (os.path.getsize(sdg_ca_cert_path) > 0)
+
+    use_tls = (dsp_ca_exists or sdg_ca_exists)
+
     if use_tls:
         import httpx
 
-        custom_http_client = httpx.Client(verify=sdg_ca_cert_path)
+        ca_cert_path = dsp_ca_cert_path if dsp_ca_exists else sdg_ca_cert_path
+        custom_http_client = httpx.Client(verify=ca_cert_path)
         client = openai.OpenAI(
             base_url=endpoint, api_key=api_key, http_client=custom_http_client
         )
