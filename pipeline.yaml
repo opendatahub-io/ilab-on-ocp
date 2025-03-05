@@ -1413,10 +1413,8 @@ deploymentSpec:
         image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
         resources:
           accelerator:
-            count: '1'
             resourceCount: '1'
             resourceType: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
-            type: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
     exec-run-mt-bench-op:
       container:
         args:
@@ -1571,10 +1569,8 @@ deploymentSpec:
         image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
         resources:
           accelerator:
-            count: '1'
             resourceCount: '1'
             resourceType: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
-            type: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
     exec-sdg-op:
       container:
         args:
@@ -2573,7 +2569,7 @@ root:
         isOptional: true
         parameterType: LIST
 schemaVersion: 2.1.0
-sdkVersion: kfp-2.11.0
+sdkVersion: kfp-2.12.1
 ---
 platforms:
   kubernetes:
