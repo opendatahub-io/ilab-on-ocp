@@ -33,9 +33,9 @@ from utils import (
     ilab_importer_op,
     model_to_pvc_op,
     pvc_to_mmlu_branch_op,
-    pvc_to_model_op,
     pvc_to_mt_bench_branch_op,
     pvc_to_mt_bench_op,
+    upload_model_op,
 )
 from utils.consts import RHELAI_IMAGE
 
@@ -69,14 +69,14 @@ JUDGE_CA_CERT_PATH = "/tmp/cert"
     description="InstructLab pipeline",
 )
 def ilab_pipeline(
-    # Model I/O
-    input_model_uri: str,
+    sdg_base_model: str,
+    # Model output
     output_oci_model_uri: str = "",
     output_oci_registry_secret: str = None,
     output_model_name: str = None,
-    output_model_version_name: str = None,
+    output_model_version: str = None,
     output_model_registry_name: str = None,
-    output_model_registry_namespace: str = "rhoai-model-registries",
+    output_model_registry_api_url: str = None,
     output_modelcar_base_image: str = "registry.access.redhat.com/ubi9-micro:latest",
     # SDG phase
     sdg_repo_url: str = None,
@@ -86,7 +86,6 @@ def ilab_pipeline(
         int
     ] = None,  # FIXME: https://issues.redhat.com/browse/RHOAIRFE-467
     sdg_teacher_secret: str = "teacher-secret",
-    sdg_base_model: str = None,
     sdg_scale_factor: int = 30,  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L125
     sdg_pipeline: str = "/usr/share/instructlab/sdg/pipelines/agentic",  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L122
     sdg_max_batch_len: int = 5000,  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L334
@@ -128,21 +127,20 @@ def ilab_pipeline(
     """InstructLab pipeline
 
     Args:
-        input_model_uri: URI pointing to a model in an OCI or S3 registry.
         output_oci_model_uri: The URI path to the OCI registry where the output model is pushed to.
         output_oci_registry_secret: The secret key to use for OCI output registry.
         output_model_name:  Model Registration parameter. The name of the model used during model registration.
-        output_model_version_name: Model Registration parameter. The version of the model used during model registration.
-        output_model_registry_name: Model Registration parameter. The name of the model registry used for model registration.
-        output_model_registry_namespace: Model Registration parameter. The namespace of the model used during model registration.
-        output_modelcar_base_image: The base image used for output model.
+        output_model_version: Model Registration parameter. The version of the model used during model registration.
+        output_model_registry_api_url: Model Registration parameter. The API URL of the model registry used during model registration.
+        output_model_registry_name: Model Registration parameter. The name of the model registry used for model registration. If not specified, the name is parsed from output_model_registry_api_url.
+        output_modelcar_base_image: The base image used for output model. The default value does not work in a disconnected environment.
 
         sdg_repo_url: SDG parameter. Points to a taxonomy git repository. E.g. "https://github.com/instructlab/taxonomy.git"
         sdg_repo_secret: SDG parameter. The name of the k8s secret holding access credentials to the sdg_repo_url.
         sdg_repo_branch: SDG parameter. Points to a branch within the taxonomy git repository. If set, has priority over sdg_repo_pr
         sdg_repo_pr: SDG parameter. Points to a pull request against the taxonomy git repository
         sdg_teacher_secret: SDG parameter. The name of the k8s secret key holding access credentials to the teacher server.
-        sdg_base_model: SDG parameter. LLM model used to generate the synthetic dataset. E.g. "s3://<BUCKET>/<PATH_TO_MODEL>"
+        sdg_base_model: SDG parameter. The LLM model used to generate the synthetic dataset. This can be a model from OCI such as "oci://registry.redhat.io/rhelai1/modelcar-granite-8b-code-instruct:latest" or "s3://<BUCKET>/<PATH_TO_MODEL>".
         sdg_scale_factor: SDG parameter. The total number of instructions to be generated.
         sdg_pipeline: SDG parameter. Data generation pipeline to use. Available: 'simple', 'full', or a valid path to a directory of pipeline workflow YAML files. Note that 'full' requires a larger teacher model, Mixtral-8x7b.
         sdg_max_batch_len: SDG parameter. Maximum tokens per gpu for each batch that will be handled in a single step.
@@ -234,7 +232,7 @@ def ilab_pipeline(
     # set_image_pull_policy(sdg_task, "Always")
 
     # Training stage
-    model_source_s3_task = dsl.importer(
+    model_source_task = dsl.importer(
         artifact_uri=sdg_base_model, artifact_class=dsl.Model
     )
 
@@ -245,7 +243,7 @@ def ilab_pipeline(
         storage_class_name=k8s_storage_class_name,
     )
 
-    model_to_pvc_task = model_to_pvc_op(model=model_source_s3_task.output)
+    model_to_pvc_task = model_to_pvc_op(model=model_source_task.output)
     model_to_pvc_task.set_caching_options(False)
     mount_pvc(
         task=model_to_pvc_task, pvc_name=model_pvc_task.output, mount_path="/model"
@@ -431,8 +429,18 @@ def ilab_pipeline(
     final_eval_task.set_accelerator_limit(1)
     final_eval_task.set_caching_options(False)
 
-    output_model_task = pvc_to_model_op(
+    output_model_task = upload_model_op(
+        output_oci_model_uri=output_oci_model_uri,
+        output_oci_registry_secret=output_oci_registry_secret,
+        output_modelcar_base_image=output_modelcar_base_image,
+        run_id=dsl.PIPELINE_JOB_ID_PLACEHOLDER,
+        run_name=dsl.PIPELINE_JOB_NAME_PLACEHOLDER,
+        output_model_name=output_model_name,
+        output_model_version=output_model_version,
+        output_model_registry_name=output_model_registry_name,
+        output_model_registry_api_url=output_model_registry_api_url,
         pvc_path="/output/phase_2/model/hf_format/candidate_model",
+        oci_temp_dir="/output",
     )
     output_model_task.after(run_mt_bench_task)
     output_model_task.set_caching_options(False)

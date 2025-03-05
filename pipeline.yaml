@@ -8,15 +8,14 @@
 #    final_eval_few_shots: int [Default: 5.0]
 #    final_eval_max_workers: str [Default: 'auto']
 #    final_eval_merge_system_user_message: bool [Default: False]
-#    input_model_uri: str
 #    k8s_storage_class_name: str [Default: 'standard']
 #    k8s_storage_size: str [Default: '100Gi']
 #    mt_bench_max_workers: str [Default: 'auto']
 #    mt_bench_merge_system_user_message: bool [Default: False]
 #    output_model_name: str
+#    output_model_registry_api_url: str
 #    output_model_registry_name: str
-#    output_model_registry_namespace: str [Default: 'rhoai-model-registries']
-#    output_model_version_name: str
+#    output_model_version: str
 #    output_modelcar_base_image: str [Default: 'registry.access.redhat.com/ubi9-micro:latest']
 #    output_oci_model_uri: str [Default: '']
 #    output_oci_registry_secret: str
@@ -343,18 +342,6 @@ components:
           artifactType:
             schemaTitle: system.Artifact
             schemaVersion: 0.0.1
-  comp-pvc-to-model-op:
-    executorLabel: exec-pvc-to-model-op
-    inputDefinitions:
-      parameters:
-        pvc_path:
-          parameterType: STRING
-    outputDefinitions:
-      artifacts:
-        model:
-          artifactType:
-            schemaTitle: system.Model
-            schemaVersion: 0.0.1
   comp-pvc-to-mt-bench-branch-op:
     executorLabel: exec-pvc-to-mt-bench-branch-op
     inputDefinitions:
@@ -669,6 +656,51 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
+  comp-upload-model-op:
+    executorLabel: exec-upload-model-op
+    inputDefinitions:
+      parameters:
+        oci_temp_dir:
+          defaultValue: /output
+          isOptional: true
+          parameterType: STRING
+        output_model_name:
+          isOptional: true
+          parameterType: STRING
+        output_model_registry_api_url:
+          isOptional: true
+          parameterType: STRING
+        output_model_registry_name:
+          isOptional: true
+          parameterType: STRING
+        output_model_version:
+          isOptional: true
+          parameterType: STRING
+        output_modelcar_base_image:
+          isOptional: true
+          parameterType: STRING
+        output_oci_model_uri:
+          isOptional: true
+          parameterType: STRING
+        output_oci_registry_secret:
+          isOptional: true
+          parameterType: STRING
+        pvc_path:
+          defaultValue: /output/model
+          isOptional: true
+          parameterType: STRING
+        run_id:
+          isOptional: true
+          parameterType: STRING
+        run_name:
+          isOptional: true
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
 deploymentSpec:
   executors:
     exec-createpvc:
@@ -807,23 +839,35 @@ deploymentSpec:
     exec-model-to-pvc-op:
       container:
         args:
-        - cp -r {{$.inputs.artifacts['model'].path}}/* {{$.inputs.parameters['pvc_path']}}
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - model_to_pvc_op
         command:
-        - /bin/sh
-        - -c
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef model_to_pvc_op(model: dsl.Input[dsl.Model], pvc_path: str =\
+          \ \"/model\"):\n    import os\n    import os.path\n    import shutil\n\n\
+          \    # shutil.copytree fails with \"Operation Not Permitted\" but doing\
+          \ one file at a time works for some reason.\n    for f in os.listdir(model.path):\n\
+          \        src = os.path.join(model.path, f)\n        dest = os.path.join(pvc_path,\
+          \ f)\n        print(f\"Copying {src} to {dest}\")\n        if os.path.isdir(src):\n\
+          \            shutil.copytree(src, dest)\n        else:\n            shutil.copy(src,\
+          \ dest)\n\n"
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
     exec-pvc-to-mmlu-branch-op:
       container:
         args:
         - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['mmlu_branch_output'].path}}
-        command:
-        - /bin/sh
-        - -c
-        image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
-    exec-pvc-to-model-op:
-      container:
-        args:
-        - cp -r {{$.inputs.parameters['pvc_path']}} {{$.outputs.artifacts['model'].path}}
         command:
         - /bin/sh
         - -c
@@ -1823,6 +1867,139 @@ deploymentSpec:
         - /bin/sh
         - -c
         image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
+    exec-upload-model-op:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - upload_model_op
+        command:
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef upload_model_op(\n    model: dsl.Output[dsl.Model],\n    output_oci_model_uri:\
+          \ str = None,\n    output_oci_registry_secret: str = None,\n    output_modelcar_base_image:\
+          \ str = None,\n    run_id: str = None,\n    run_name: str = None,\n    output_model_name:\
+          \ str = None,\n    output_model_version: str = None,\n    output_model_registry_api_url:\
+          \ str = None,\n    output_model_registry_name: str = None,\n    pvc_path:\
+          \ str = \"/output/model\",\n    oci_temp_dir: str = \"/output\",\n):\n \
+          \   import base64\n    import os\n    import pathlib\n    import shutil\n\
+          \    import subprocess\n    import tempfile\n    import time\n    import\
+          \ urllib.parse\n\n    from model_registry import ModelRegistry\n\n    model.name\
+          \ = \"model\"\n\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          , \"r\"\n    ) as ns_file:\n        pod_namespace = ns_file.readline()\n\
+          \n    if output_oci_model_uri:\n        import kubernetes.client\n     \
+          \   import kubernetes.config\n        from olot.basics import oci_layers_on_top\n\
+          \n        kubernetes.config.load_incluster_config()\n        secret = kubernetes.client.CoreV1Api().read_namespaced_secret(\n\
+          \            output_oci_registry_secret,\n            pod_namespace,\n \
+          \       )\n\n        if \".dockerconfigjson\" in secret.data:\n        \
+          \    push_config_raw = base64.b64decode(secret.data[\".dockerconfigjson\"\
+          ])\n        else:\n            push_config_raw = base64.b64decode(secret.data[\"\
+          .dockercfg\"])\n\n        if output_oci_model_uri.startswith(\"oci://\"\
+          ):\n            output_oci_model_uri = output_oci_model_uri[len(\"oci://\"\
+          ) :]\n\n        model.uri = \"oci://\" + output_oci_model_uri\n\n      \
+          \  # Strip the oci:// or docker:// prefix if provided\n        if output_modelcar_base_image.startswith(\"\
+          oci://\"):\n            output_modelcar_base_image = output_modelcar_base_image[len(\"\
+          oci://\") :]\n        elif output_modelcar_base_image.startswith(\"docker://\"\
+          ):\n            output_modelcar_base_image = output_modelcar_base_image[len(\"\
+          docker://\") :]\n\n        with tempfile.TemporaryDirectory(\"-modelcar\"\
+          , dir=oci_temp_dir) as t:\n            print(\n                f\"\\n----\
+          \ Downloading the Modelcar base image {output_modelcar_base_image} ----\"\
+          \n            )\n\n            tries = 0\n\n            while True:\n  \
+          \              try:\n                    tries += 1\n                  \
+          \  subprocess.run(\n                        [\n                        \
+          \    \"skopeo\",\n                            \"copy\",\n              \
+          \              \"--multi-arch\",\n                            \"all\",\n\
+          \                            \"--remove-signatures\",\n                \
+          \            \"docker://\" + output_modelcar_base_image,\n             \
+          \               \"oci:\" + t + \":latest\",\n                        ],\n\
+          \                        check=True,\n                    )\n          \
+          \          break\n                except Exception as e:\n             \
+          \       if tries >= 3:\n                        raise\n\n              \
+          \      print(\n                        f\"Failed to pull the Modelcar base\
+          \ image on attempt {tries}/3: {e}\"\n                    )\n\n         \
+          \   model_files = []\n\n            for root, _, files in os.walk(pvc_path):\n\
+          \                for file in files:\n                    file_path = os.path.join(root,\
+          \ file)\n                    model_files.append(file_path)\n\n         \
+          \   print(\n                \"\\n---- Adding the model files to the /models\
+          \ directory on the base image ----\"\n            )\n            oci_layers_on_top(pathlib.Path(t),\
+          \ model_files)\n\n            print(\"\\n---- Pushing the Modelcar to \"\
+          \ + output_oci_model_uri + \" ----\")\n            with tempfile.NamedTemporaryFile()\
+          \ as push_config:\n                push_config.write(push_config_raw)\n\
+          \                push_config.flush()\n                tries = 0\n\n    \
+          \            while True:\n                    try:\n                   \
+          \     tries += 1\n                        subprocess.run(\n            \
+          \                [\n                                \"skopeo\",\n      \
+          \                          \"copy\",\n                                \"\
+          --dest-authfile\",\n                                push_config.name,\n\
+          \                                \"--multi-arch\",\n                   \
+          \             \"all\",\n                                \"oci:\" + t + \"\
+          :latest\",\n                                \"docker://\" + output_oci_model_uri,\n\
+          \                            ],\n                            check=True,\n\
+          \                        )\n                        break\n            \
+          \        except Exception as e:\n                        if tries >= 3:\n\
+          \                            raise\n\n                        print(\n \
+          \                           f\"Failed to push the Modelcar image on attempt\
+          \ {tries}/3: {e}\"\n                        )\n                        time.sleep(1)\n\
+          \n    else:\n        print(\n            f\"\\n---- Copying the model to\
+          \ the model path {model.path} to be uploaded to S3 ----\"\n        )\n \
+          \       shutil.copytree(pvc_path, model.path)\n\n    if not output_model_registry_api_url:\n\
+          \        return\n\n    print(\n        f\"\\n---- Registering the Modelcar\
+          \ as {output_model_name} with the version {output_model_version} ----\"\n\
+          \    )\n\n    with open(\"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
+          , \"r\") as token_file:\n        token = token_file.read()\n\n    # Extract\
+          \ the port out of the URL because the ModelRegistry client expects those\
+          \ as separate arguments.\n    model_registry_api_url_parsed = urllib.parse.urlparse(output_model_registry_api_url)\n\
+          \    model_registry_api_url_port = model_registry_api_url_parsed.port\n\n\
+          \    if model_registry_api_url_port:\n        model_registry_api_server_address\
+          \ = output_model_registry_api_url.replace(\n            model_registry_api_url_parsed.netloc,\n\
+          \            model_registry_api_url_parsed.hostname,\n        )\n    else:\n\
+          \        if model_registry_api_url_parsed.scheme == \"http\":\n        \
+          \    model_registry_api_url_port = 80\n        else:\n            model_registry_api_url_port\
+          \ = 443\n\n        model_registry_api_server_address = output_model_registry_api_url\n\
+          \n    if not model_registry_api_url_parsed.scheme:\n        model_registry_api_server_address\
+          \ = (\n            \"https://\" + model_registry_api_server_address\n  \
+          \      )\n\n    tries = 0\n\n    while True:\n        try:\n           \
+          \ tries += 1\n            registry = ModelRegistry(\n                server_address=model_registry_api_server_address,\n\
+          \                port=model_registry_api_url_port,\n                author=\"\
+          InstructLab Pipeline\",\n                user_token=token,\n           \
+          \ )\n\n            registered_model = registry.register_model(\n       \
+          \         name=output_model_name,\n                version=output_model_version,\n\
+          \                uri=model.uri,\n                model_format_name=\"vLLM\"\
+          ,\n                model_format_version=None,\n                metadata={\n\
+          \                    \"_registeredFromPipelineRunId\": run_id,\n       \
+          \             \"_registeredFromPipelineRunName\": run_name,\n          \
+          \          \"_registeredFromPipelineProject\": pod_namespace,\n        \
+          \        },\n            )\n            break\n        except Exception\
+          \ as e:\n            if tries >= 3:\n                raise\n\n         \
+          \   print(f\"Failed to register the model on attempt {tries}/3: {e}\")\n\
+          \            time.sleep(1)\n\n    # Get the model version ID to add as metadata\
+          \ on the output model artifact\n    tries = 0\n\n    while True:\n     \
+          \   try:\n            tries += 1\n            model_version_id = registry.get_model_version(\n\
+          \                output_model_name, output_model_version\n            ).id\n\
+          \            break\n        except Exception as e:\n            if tries\
+          \ >= 3:\n                raise\n\n            print(f\"Failed to get the\
+          \ model ID on attempt {tries}/3: {e}\")\n            time.sleep(1)\n\n \
+          \   # If output_model_registry_name is not provided, parse it from the URL.\n\
+          \    if not output_model_registry_name:\n        output_model_registry_name\
+          \ = urllib.parse.urlparse(\n            output_model_registry_api_url\n\
+          \        ).hostname.split(\".\")[0]\n\n        if output_model_registry_name.endswith(\"\
+          -rest\"):\n            output_model_registry_name = output_model_registry_name[:\
+          \ -len(\"-rest\")]\n\n    model.metadata[\"modelRegistryName\"] = output_model_registry_name\n\
+          \    model.metadata[\"registeredModelName\"] = output_model_name\n    model.metadata[\"\
+          modelVersionName\"] = output_model_version\n    model.metadata[\"modelVersionId\"\
+          ] = model_version_id\n    model.metadata[\"registeredModelId\"] = registered_model.id\n\
+          \n"
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
 pipelineInfo:
   description: InstructLab pipeline
   displayName: InstructLab
@@ -1946,9 +2123,9 @@ root:
         - createpvc-3
         - generate-metrics-report-op
         - pvc-to-mmlu-branch-op
-        - pvc-to-model-op
         - pvc-to-mt-bench-branch-op
         - pvc-to-mt-bench-op
+        - upload-model-op
         inputs:
           parameters:
             pvc_name:
@@ -2015,20 +2192,6 @@ root:
                 constant: /output/mmlu_branch/mmlu_branch_data.json
         taskInfo:
           name: pvc-to-mmlu-branch-op
-      pvc-to-model-op:
-        cachingOptions: {}
-        componentRef:
-          name: comp-pvc-to-model-op
-        dependentTasks:
-        - createpvc-3
-        - run-mt-bench-op
-        inputs:
-          parameters:
-            pvc_path:
-              runtimeValue:
-                constant: /output/phase_2/model/hf_format/candidate_model
-        taskInfo:
-          name: pvc-to-model-op
       pvc-to-mt-bench-branch-op:
         cachingOptions: {}
         componentRef:
@@ -2302,6 +2465,43 @@ root:
         - sdg-op
         taskInfo:
           name: taxonomy-to-artifact-op
+      upload-model-op:
+        cachingOptions: {}
+        componentRef:
+          name: comp-upload-model-op
+        dependentTasks:
+        - createpvc-3
+        - run-mt-bench-op
+        inputs:
+          parameters:
+            oci_temp_dir:
+              runtimeValue:
+                constant: /output
+            output_model_name:
+              componentInputParameter: output_model_name
+            output_model_registry_api_url:
+              componentInputParameter: output_model_registry_api_url
+            output_model_registry_name:
+              componentInputParameter: output_model_registry_name
+            output_model_version:
+              componentInputParameter: output_model_version
+            output_modelcar_base_image:
+              componentInputParameter: output_modelcar_base_image
+            output_oci_model_uri:
+              componentInputParameter: output_oci_model_uri
+            output_oci_registry_secret:
+              componentInputParameter: output_oci_registry_secret
+            pvc_path:
+              runtimeValue:
+                constant: /output/phase_2/model/hf_format/candidate_model
+            run_id:
+              runtimeValue:
+                constant: '{{$.pipeline_job_uuid}}'
+            run_name:
+              runtimeValue:
+                constant: '{{$.pipeline_job_name}}'
+        taskInfo:
+          name: upload-model-op
   inputDefinitions:
     parameters:
       eval_gpu_identifier:
@@ -2343,9 +2543,6 @@ root:
           based judges)
         isOptional: true
         parameterType: BOOLEAN
-      input_model_uri:
-        description: URI pointing to a model in an OCI or S3 registry.
-        parameterType: STRING
       k8s_storage_class_name:
         defaultValue: standard
         description: A Kubernetes StorageClass name for persistent volumes. Selected
@@ -2375,25 +2572,25 @@ root:
           model registration.'
         isOptional: true
         parameterType: STRING
+      output_model_registry_api_url:
+        description: Model Registration parameter. The API URL of the model registry
+          used during model registration.
+        isOptional: true
+        parameterType: STRING
       output_model_registry_name:
         description: Model Registration parameter. The name of the model registry
-          used for model registration.
+          used for model registration. If not specified, the name is parsed from output_model_registry_api_url.
         isOptional: true
         parameterType: STRING
-      output_model_registry_namespace:
-        defaultValue: rhoai-model-registries
-        description: Model Registration parameter. The namespace of the model used
-          during model registration.
-        isOptional: true
-        parameterType: STRING
-      output_model_version_name:
+      output_model_version:
         description: Model Registration parameter. The version of the model used during
           model registration.
         isOptional: true
         parameterType: STRING
       output_modelcar_base_image:
         defaultValue: registry.access.redhat.com/ubi9-micro:latest
-        description: The base image used for output model.
+        description: The base image used for output model. The default value does
+          not work in a disconnected environment.
         isOptional: true
         parameterType: STRING
       output_oci_model_uri:
@@ -2407,9 +2604,9 @@ root:
         isOptional: true
         parameterType: STRING
       sdg_base_model:
-        description: SDG parameter. LLM model used to generate the synthetic dataset.
-          E.g. "s3://<BUCKET>/<PATH_TO_MODEL>"
-        isOptional: true
+        description: SDG parameter. The LLM model used to generate the synthetic dataset.
+          This can be a model from OCI such as "oci://registry.redhat.io/rhelai1/modelcar-granite-8b-code-instruct:latest"
+          or "s3://<BUCKET>/<PATH_TO_MODEL>".
         parameterType: STRING
       sdg_max_batch_len:
         defaultValue: 5000.0
@@ -2609,12 +2806,6 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc-3
-        exec-pvc-to-model-op:
-          pvcMount:
-          - mountPath: /output
-            taskOutputParameter:
-              outputParameterKey: name
-              producerTask: createpvc-3
         exec-pvc-to-mt-bench-branch-op:
           pvcMount:
           - mountPath: /output
@@ -2689,3 +2880,9 @@ platforms:
             taskOutputParameter:
               outputParameterKey: name
               producerTask: createpvc
+        exec-upload-model-op:
+          pvcMount:
+          - mountPath: /output
+            taskOutputParameter:
+              outputParameterKey: name
+              producerTask: createpvc-3
