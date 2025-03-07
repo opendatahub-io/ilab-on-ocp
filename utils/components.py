@@ -1,6 +1,9 @@
 # type: ignore
 
+from typing import Optional
+
 from kfp import dsl
+from kfp.kubernetes import use_config_map_as_volume
 
 from .consts import RHELAI_IMAGE, RUNTIME_GENERIC_IMAGE, TOOLBOX_IMAGE
 
@@ -298,3 +301,302 @@ def ilab_importer_op(repository: str, release: str, base_model: dsl.Output[dsl.M
             f"ilab --config=DEFAULT model download --repository {repository} --release {release} --model-dir {base_model.path}"
         ],
     )
+
+
+@dsl.component(base_image=RUNTIME_GENERIC_IMAGE)
+def test_judge_teacher_models(secret_name: str):
+    import base64
+    import json
+    import os
+    import sys
+    import time
+
+    import requests
+    from kubernetes import client, config
+    from kubernetes.client.rest import ApiException
+
+    config.load_incluster_config()
+
+    model_endpoint = ""
+    model_name = ""
+    model_api_key = ""
+    with open(
+        "/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r"
+    ) as namespace_path:
+        namespace = namespace_path.readline()
+
+    with client.ApiClient() as api_client:
+        core_api = client.CoreV1Api(api_client)
+
+        try:
+            secret = core_api.read_namespaced_secret(secret_name, namespace)
+            print(f"Reading secret {secret_name} data...")
+            model_api_key = base64.b64decode(secret.data["api_key"]).decode("utf-8")
+            model_name = base64.b64decode(secret.data["model_name"]).decode("utf-8")
+            model_endpoint = base64.b64decode(secret.data["endpoint"]).decode("utf-8")
+        except (ApiException, KeyError) as e:
+            print(f"""
+            ####################################################### ERROR ################################################################
+            # Error reading {secret_name}. Ensure you created a secret with this name in namespace {namespace} and has 'api_key' present #
+            ##############################################################################################################################
+            """)
+            sys.exit(1)
+
+    request_auth = {"Authorization": f"Bearer {model_api_key}"}
+    request_body = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": "tell me a funny joke."}],
+    }
+    # Make 3 attempts
+    for i in range(1, 3):
+        resp = requests.post(
+            f"{model_endpoint}/chat/completions",
+            headers=request_auth,
+            data=json.dumps(request_body),
+            verify=os.environ["SDG_CA_CERT_PATH"],
+        )
+        if resp.status_code != 200:
+            print(f"Model Server {model_name} is not available. Attempt {i}/3...")
+            time.sleep(30)
+        else:
+            print(f"""
+            ################### INFO #######################
+            # Model Server {model_name} is up and running. #
+            ################################################
+            """)
+            pass
+    print(f"""
+    ############################################ ERROR ####################################################
+    # Model Server {model_name} is unavailable. Ensure the model is up and it is ready to serve requests. #
+    #######################################################################################################
+    """)
+    sys.exit(1)
+
+
+@dsl.component(base_image=RUNTIME_GENERIC_IMAGE)
+def test_model_registry(
+    model_registry_endpoint: Optional[str],
+    model_name: Optional[str],
+    model_version: Optional[str],
+):
+    import sys
+
+    from model_registry import ModelRegistry
+
+    try:
+        model_registry = ModelRegistry(
+            server_address=model_registry_endpoint,
+            author="ilab pipeline",
+            is_secure=False,
+            user_token=open(
+                "/var/run/secrets/kubernetes.io/serviceaccount/token"
+            ).readline(),
+        )
+        if model_registry.get_model_version(model_name, model_version) is not None:
+            print(f"""
+            ####################################### ERROR #######################################
+            # There is already a model version registered. You cannot overwrite a model version #
+            #####################################################################################
+            """)
+            sys.exit(1)
+        print(f"""
+        ########### INFO ##############
+        # Model Registry is available #
+        ###############################
+        """)
+    except Exception as e:
+        print(f"""
+        ############# ERROR ###############
+        # Model Registry is not available #
+        ###################################
+        """)
+        sys.exit(1)
+
+
+@dsl.component(base_image=RUNTIME_GENERIC_IMAGE)
+def test_training_operator():
+    import sys
+
+    from kubernetes import client, config
+    from kubernetes.client.rest import ApiException
+
+    with open(
+        "/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r"
+    ) as namespace_path:
+        namespace = namespace_path.readline()
+    config.load_incluster_config()
+
+    with client.ApiClient() as api_client:
+        api_instance = client.CustomObjectsApi(api_client)
+        group = "kubeflow.org"
+        version = "v1"
+        plural = "pytorchjobs"
+
+        try:
+            api_response = api_instance.list_namespaced_custom_object(
+                group, version, namespace, plural
+            )
+            print("""
+            ######################### INFO ###########################
+            # Kubeflow Training Operator PyTorchJob CRD is available #
+            ##########################################################
+            """)
+        except ApiException as e:
+            print("""
+            #################################################### ERROR ######################################################################
+            # Kubeflow Training Operator PyTorchJob CRD is unavailable. Ensure your OpenShift AI installation has Training Operator enabled #
+            #################################################################################################################################
+            """)
+            sys.exit(1)
+
+
+@dsl.component(base_image=RUNTIME_GENERIC_IMAGE)
+def test_oci_model(output_oci_model_uri: str, output_oci_registry_secret: str):
+    import base64
+    import json
+    import sys
+
+    from kubernetes import client, config
+    from kubernetes.client.rest import ApiException
+
+    with open(
+        "/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r"
+    ) as namespace_path:
+        namespace = namespace_path.readline()
+    config.load_incluster_config()
+
+    if output_oci_model_uri is None:
+        print(f"""
+        ############################## INFO ##################################
+        # Parameter output_oci_model_uri not provided. Skipping this step... #
+        ######################################################################
+        """)
+        sys.exit(0)
+    elif not output_oci_model_uri.startswith("oci://"):
+        # If SDG Model Base is not an OCI image, just inform user and quit
+        print(f"""
+        ############################### INFO ####################################
+        # Model {output_oci_model_uri} is not a ModelCar. Skipping this step... #
+        #########################################################################
+        """)
+        sys.exit(0)
+
+    # Extract from sdg_base_model parameter the registry name
+    registry_name = output_oci_model_uri.replace("oci://", "").split("/")[0]
+
+    with client.ApiClient() as api_client:
+        core_api = client.CoreV1Api(api_client)
+        try:
+            secret = core_api.read_namespaced_secret(sdg_oci_docker_secret, namespace)
+            print(f"Reading secret {sdg_oci_docker_secret} data...")
+            if secret.type == "kubernetes.io/dockerconfigjson":
+                # handle authentication if secret provided is kubernetes.io/dockerconfigjson
+                docker_config_json = json.loads(
+                    base64.b64decode(secret.data[".dockerconfigjson"]).decode("utf-8")
+                )
+                if registry_name not in docker_config_json["auths"]:
+                    print(f"""
+                    ########################################################## ERROR ########################################################################################
+                    # OCI Secret {sdg_oci_docker_secret} does not have an auth token present for {registry_name}. Ensure that the secret provided has the proper auth token #
+                    #########################################################################################################################################################
+                    """)
+                    sys.exit(1)
+                print(f"OCI Secret has auth token present for {registry_name}")
+            elif secret.type == "kubernetes.io/dockercfg":
+                # handle authentication if secret provided is kubernetes.io/dockercfg
+                dockercfg_json = json.loads(
+                    base64.b64decode(secret.data[".dockercfg"]).decode("utf-8")
+                )
+                if registry_name not in docker_config_json.keys():
+                    print(f"""
+                    ################################################################## ERROR ################################################################################
+                    # OCI Secret {sdg_oci_docker_secret} does not have an auth token present for {registry_name}. Ensure that the secret provided has the proper auth token #
+                    #########################################################################################################################################################
+                    """)
+                    sys.exit(1)
+                print(f"""
+                ######################## INFO ###########################
+                # OCI Secret has auth token present for {registry_name} #
+                #########################################################
+                """)
+        except ApiException as e:
+            print(f"""
+            ############################################## ERROR #################################################################
+            # Secret {sdg_oci_docker_secret} does not exist. Ensure you created a secret with this name in namespace {namespace} #
+            ######################################################################################################################
+            """)
+            sys.exit(1)
+
+
+@dsl.container_component
+def test_taxonomy_repo(sdg_repo_url: str):
+    return dsl.ContainerSpec(
+        RUNTIME_GENERIC_IMAGE,
+        ["/bin/sh", "-c"],
+        [
+            f"""
+            # Increase logging verbosity
+            set -x &&
+
+            # Add TLS Parameters if CA Cert exists and is non-zero size
+            ADDITIONAL_CLONE_PARAMS=""
+            if [ -s "$TAXONOMY_CA_CERT_PATH" ]; then
+                ADDITIONAL_CLONE_PARAMS="-c http.sslVerify=true -c http.sslCAInfo=$TAXONOMY_CA_CERT_PATH"
+            fi
+
+            # ls-remote will fail if repo is not valid
+            git ls-remote {sdg_repo_url} > /dev/null;
+            """
+        ],
+    )
+
+
+@dsl.pipeline(display_name="Prerequisite check")
+def prerequisites_check_op(
+    sdg_repo_url: str,
+    output_oci_registry_secret: str,
+    eval_judge_secret: str,
+    sdg_teacher_secret: str,
+    output_oci_model_uri: str,
+    output_model_registry_api_url: str,
+    output_model_name: str,
+    output_model_version: str,
+):
+    """
+    Pre-validation checks for the InstructLab pipeline.
+    """
+    import os
+
+    ## Validate judge information
+    test_judge_model_op = test_judge_teacher_models(secret_name=eval_judge_secret)
+    use_config_map_as_volume(
+        test_judge_model_op, "kube-root-ca.crt", mount_path="/tmp/cert"
+    )
+    test_judge_model_op.set_env_variable(
+        "SDG_CA_CERT_PATH", os.path.join("/tmp/cert", "ca.crt")
+    )
+
+    test_judge_model_op.set_caching_options(False)
+
+    ## Validate teacher information
+    test_teacher_model_op = test_judge_teacher_models(secret_name=sdg_teacher_secret)
+    test_teacher_model_op.set_caching_options(False)
+
+    test_model_registry_op = test_model_registry(
+        model_registry_endpoint=output_model_registry_api_url,
+        model_name=output_model_name,
+        model_version=output_model_version,
+    )
+    test_model_registry_op.set_caching_options(False)
+
+    test_training_operator_op = test_training_operator()
+    test_training_operator_op.set_caching_options(False)
+
+    test_oci_configuration_op = test_oci_model(
+        output_oci_model_uri=output_oci_model_uri,
+        output_oci_registry_secret=output_oci_registry_secret,
+    )
+    test_oci_configuration_op.set_caching_options(False)
+
+    test_taxonomy_repo_op = test_taxonomy_repo(sdg_repo_url=sdg_repo_url)
+    test_taxonomy_repo_op.set_caching_options(False)
