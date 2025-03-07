@@ -37,7 +37,7 @@ from utils import (
     pvc_to_mt_bench_op,
     upload_model_op,
 )
-from utils.consts import RHELAI_IMAGE
+from utils.consts import RHELAI_IMAGE, RUNTIME_GENERIC_IMAGE
 
 TEACHER_CONFIG_MAP = "teacher-server"
 TEACHER_SECRET = "teacher-server"
@@ -188,6 +188,10 @@ def ilab_pipeline(
         storage_class_name=k8s_storage_class_name,
     )
 
+    model_tokenizer_source_task = dsl.importer(
+        artifact_uri=f"oci://{RUNTIME_GENERIC_IMAGE}", artifact_class=dsl.Model
+    )
+
     sdg_task = sdg_op(
         num_instructions_to_generate=sdg_scale_factor,
         pipeline=sdg_pipeline,
@@ -197,6 +201,7 @@ def ilab_pipeline(
         sdg_secret_name=sdg_teacher_secret,
         repo_url=sdg_repo_url,
         taxonomy_repo_secret=sdg_repo_secret,
+        tokenizer_model=model_tokenizer_source_task.output,
     )
     sdg_task.set_env_variable("HOME", "/tmp")
     sdg_task.set_env_variable("HF_HOME", "/tmp")

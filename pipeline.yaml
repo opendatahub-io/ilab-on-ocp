@@ -303,6 +303,18 @@ components:
           artifactType:
             schemaTitle: system.Model
             schemaVersion: 0.0.1
+  comp-importer-2:
+    executorLabel: exec-importer-2
+    inputDefinitions:
+      parameters:
+        uri:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        artifact:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
   comp-knowledge-processed-data-to-artifact-op:
     executorLabel: exec-knowledge-processed-data-to-artifact-op
     inputDefinitions:
@@ -584,6 +596,11 @@ components:
   comp-sdg-op:
     executorLabel: exec-sdg-op
     inputDefinitions:
+      artifacts:
+        tokenizer_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
       parameters:
         num_instructions_to_generate:
           parameterType: NUMBER_INTEGER
@@ -824,6 +841,13 @@ deploymentSpec:
     exec-importer:
       importer:
         artifactUri:
+          constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
+        typeSchema:
+          schemaTitle: system.Model
+          schemaVersion: 0.0.1
+    exec-importer-2:
+      importer:
+        artifactUri:
           runtimeParameter: uri
         typeSchema:
           schemaTitle: system.Model
@@ -863,7 +887,7 @@ deploymentSpec:
           \ f)\n        print(f\"Copying {src} to {dest}\")\n        if os.path.isdir(src):\n\
           \            shutil.copytree(src, dest)\n        else:\n            shutil.copy(src,\
           \ dest)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
     exec-pvc-to-mmlu-branch-op:
       container:
         args:
@@ -1635,17 +1659,17 @@ deploymentSpec:
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef sdg_op(\n    num_instructions_to_generate: int,\n    pipeline:\
-          \ str,\n    repo_branch: Optional[str],\n    repo_pr: Optional[int],\n \
-          \   taxonomy_path: str = \"/data/taxonomy\",\n    sdg_path: str = \"/data/sdg\"\
-          ,\n    sdg_sampling_size: float = 1.0,\n    sdg_secret_name: str = None,\n\
-          \    taxonomy_repo_secret: str = None,\n    repo_url: str = None,\n):\n\
-          \    import base64\n    import os\n    import re\n    import shutil\n  \
-          \  import subprocess\n    import tempfile\n    import urllib.parse\n\n \
-          \   import instructlab.sdg\n    import openai\n    import requests\n   \
-          \ import xdg_base_dirs\n    import yaml\n\n    REQUEST_TIMEOUT = 30  # seconds\n\
-          \n    def fetch_secret(secret_name, keys):\n        # Kubernetes API server\
-          \ inside the cluster\n        K8S_API_SERVER = \"https://kubernetes.default.svc\"\
-          \n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          \ str,\n    tokenizer_model: dsl.Input[dsl.Model],\n    repo_branch: Optional[str],\n\
+          \    repo_pr: Optional[int],\n    taxonomy_path: str = \"/data/taxonomy\"\
+          ,\n    sdg_path: str = \"/data/sdg\",\n    sdg_sampling_size: float = 1.0,\n\
+          \    sdg_secret_name: str = None,\n    taxonomy_repo_secret: str = None,\n\
+          \    repo_url: str = None,\n):\n    import base64\n    import os\n    import\
+          \ os.path\n    import re\n    import shutil\n    import subprocess\n   \
+          \ import tempfile\n    import urllib.parse\n\n    import instructlab.sdg\n\
+          \    import openai\n    import requests\n    import xdg_base_dirs\n    import\
+          \ yaml\n\n    REQUEST_TIMEOUT = 30  # seconds\n\n    def fetch_secret(secret_name,\
+          \ keys):\n        # Kubernetes API server inside the cluster\n        K8S_API_SERVER\
+          \ = \"https://kubernetes.default.svc\"\n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
           \n        TOKEN_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
           \n\n        # Fetch namespace\n        try:\n            with open(NAMESPACE_PATH,\
           \ \"r\") as f:\n                namespace = f.read().strip()\n        except\
@@ -1683,21 +1707,28 @@ deploymentSpec:
           \ github.com, gitlab.com) from an SSH repository URL.\"\"\"\n        match\
           \ = re.match(r\"git@([\\w.-]+):\", repo_url)\n        if match:\n      \
           \      return match.group(1)  # Extracted host\n        raise ValueError(f\"\
-          Invalid SSH repository URL: {repo_url}\")\n\n    if not taxonomy_repo_secret:\n\
-          \        username = os.getenv(\"GIT_USERNAME\")\n        token = os.getenv(\"\
-          GIT_TOKEN\")\n        ssh_key = os.getenv(\"GIT_SSH_KEY\")\n    else:\n\
-          \        print(\"SDG Repo secret specified, fetching...\")\n        username,\
-          \ token, ssh_key = fetch_secret(\n            taxonomy_repo_secret, [\"\
-          GIT_USERNAME\", \"GIT_TOKEN\", \"GIT_SSH_KEY\"]\n        )\n        print(\"\
-          SDG Repo secret data retrieved.\")\n\n    # Whether not provided via env\
-          \ or secret\n    # Assume the repo is public\n    if not username or ssh_key:\n\
-          \        print(\"No credentials provided for taxonomy repo, assuming public\
-          \ repo...\")\n\n    ca_cert_path = os.getenv(\"SDG_CA_CERT_PATH\")\n   \
-          \ env = os.environ.copy()\n\n    # Todo(HumairAK): should be platform cert\n\
-          \    # Set custom CA certificate if provided\n    if ca_cert_path:\n   \
-          \     print(f\"SSL CA Info detected. ca cert path: {ca_cert_path}\")\n \
-          \       env[\"GIT_SSL_CAINFO\"] = ca_cert_path\n        # Consume this in\
-          \ the process execution environment\n        # This is required for read_taxonomy\
+          Invalid SSH repository URL: {repo_url}\")\n\n    tokenizer_model_path =\
+          \ tokenizer_model.path\n    if tokenizer_model_path.startswith(\"oci://\"\
+          ):\n        # Handle where the KFP SDK is <2.12.0.\n        escaped_uri\
+          \ = tokenizer_model_path[len(\"oci://\") :].replace(\"/\", \"\\\\/\")\n\
+          \        tokenizer_model_path = os.path.join(\"/oci\", escaped_uri, \"models\"\
+          )\n\n    # A hack because InstructLab assumes the value for model_name is\
+          \ a valid path and the name of the model.\n    os.symlink(tokenizer_model_path,\
+          \ os.path.join(tempfile.gettempdir(), \"mixtral\"))\n    os.chdir(tempfile.gettempdir())\n\
+          \n    if not taxonomy_repo_secret:\n        username = os.getenv(\"GIT_USERNAME\"\
+          )\n        token = os.getenv(\"GIT_TOKEN\")\n        ssh_key = os.getenv(\"\
+          GIT_SSH_KEY\")\n    else:\n        print(\"SDG Repo secret specified, fetching...\"\
+          )\n        username, token, ssh_key = fetch_secret(\n            taxonomy_repo_secret,\
+          \ [\"GIT_USERNAME\", \"GIT_TOKEN\", \"GIT_SSH_KEY\"]\n        )\n      \
+          \  print(\"SDG Repo secret data retrieved.\")\n\n    # Whether not provided\
+          \ via env or secret\n    # Assume the repo is public\n    if not username\
+          \ or ssh_key:\n        print(\"No credentials provided for taxonomy repo,\
+          \ assuming public repo...\")\n\n    ca_cert_path = os.getenv(\"SDG_CA_CERT_PATH\"\
+          )\n    env = os.environ.copy()\n\n    # Todo(HumairAK): should be platform\
+          \ cert\n    # Set custom CA certificate if provided\n    if ca_cert_path:\n\
+          \        print(f\"SSL CA Info detected. ca cert path: {ca_cert_path}\")\n\
+          \        env[\"GIT_SSL_CAINFO\"] = ca_cert_path\n        # Consume this\
+          \ in the process execution environment\n        # This is required for read_taxonomy\
           \ calls which\n        # Perform nested calls to git clones.\n        os.environ[\"\
           GIT_SSL_CAINFO\"] = ca_cert_path\n\n    git_credentials_path = \"\"\n  \
           \  ssh_key_path = \"\"\n    # Username/PAT takes precedence over ssh\n \
@@ -1750,13 +1781,12 @@ deploymentSpec:
           ],\n            cwd=taxonomy_path,\n            env=env,\n        )\n  \
           \      exec_cmd([\"git\", \"checkout\", repo_branch], cwd=taxonomy_path,\
           \ env=env)\n\n    if sdg_secret_name is None:\n        api_key = os.getenv(\"\
-          api_key\")\n        model = os.getenv(\"model\")\n        endpoint = os.getenv(\"\
-          endpoint\")\n    else:\n        print(\"SDG Teacher secret specified, fetching...\"\
-          )\n        api_key, model, endpoint = fetch_secret(\n            sdg_secret_name,\
-          \ [\"api_token\", \"model_name\", \"endpoint\"]\n        )\n        print(\"\
-          SDG Teacher secret data retrieved.\")\n\n    sdg_ca_cert_path = os.getenv(\"\
-          SDG_CA_CERT_PATH\")\n    use_tls = os.path.exists(sdg_ca_cert_path) and\
-          \ (\n        os.path.getsize(sdg_ca_cert_path) > 0\n    )\n    if use_tls:\n\
+          api_key\")\n        endpoint = os.getenv(\"endpoint\")\n    else:\n    \
+          \    print(\"SDG Teacher secret specified, fetching...\")\n        api_key,\
+          \ endpoint = fetch_secret(sdg_secret_name, [\"api_token\", \"endpoint\"\
+          ])\n        print(\"SDG Teacher secret data retrieved.\")\n\n    sdg_ca_cert_path\
+          \ = os.getenv(\"SDG_CA_CERT_PATH\")\n    use_tls = os.path.exists(sdg_ca_cert_path)\
+          \ and (\n        os.path.getsize(sdg_ca_cert_path) > 0\n    )\n    if use_tls:\n\
           \        import httpx\n\n        custom_http_client = httpx.Client(verify=sdg_ca_cert_path)\n\
           \        client = openai.OpenAI(\n            base_url=endpoint, api_key=api_key,\
           \ http_client=custom_http_client\n        )\n    else:\n        client =\
@@ -1772,9 +1802,9 @@ deploymentSpec:
           \        instructlab.sdg.generate_data(\n            client=client,\n  \
           \          num_instructions_to_generate=num_instructions_to_generate,\n\
           \            output_dir=sdg_path,\n            taxonomy=taxonomy_path,\n\
-          \            taxonomy_base=taxonomy_base,\n            model_name=model,\n\
-          \            pipeline=pipeline,\n            chunk_word_count=1000,\n  \
-          \          server_ctx_size=4096,\n        )\n    # Tweak precomputed skills\
+          \            taxonomy_base=taxonomy_base,\n            model_name=\"mixtral\"\
+          ,\n            pipeline=pipeline,\n            chunk_word_count=1000,\n\
+          \            server_ctx_size=4096,\n        )\n    # Tweak precomputed skills\
           \ data ratio if needed\n    else:\n        skills_recipe = \"/usr/share/instructlab/sdg/default_data_recipes/skills.yaml\"\
           \n\n        def set_precomputed_skills_data_ratio(sampling_size: float,\
           \ skills_recipe: str):\n            if os.path.exists(skills_recipe):\n\
@@ -1785,6 +1815,8 @@ deploymentSpec:
           \ file:\n                    yaml.dump(skills_yaml, file)\n\n        try:\n\
           \            set_precomputed_skills_data_ratio(\n                sampling_size=sdg_sampling_size,\
           \ skills_recipe=skills_recipe\n            )\n        except PermissionError:\n\
+          \            # TODO(mprahl): When upgrading to RHEL AI 1.4, replace all\
+          \ this with:\n            # https://github.com/instructlab/sdg/blob/v0.7.1/docs/examples/mix_datasets/example_mixing.py\n\
           \            print(\"Failed to set precomputed skills data ratio: Permission\
           \ denied\")\n            print(\"Attempting to move default data recipes\
           \ to temporary directory\")\n\n            # Create a temporary directory\n\
@@ -1800,21 +1832,31 @@ deploymentSpec:
           \               os.path.join(str(dir), \"instructlab\", \"sdg\")\n     \
           \               for dir in xdg_base_dirs.xdg_data_dirs()\n             \
           \   ]\n                temp_pipeline_dir = os.path.join(temp_dir, \"pipeline\"\
-          )\n                os.mkdir(temp_pipeline_dir)\n                for d in\
-          \ data_dirs:\n                    pipeline_path = os.path.join(d, \"pipelines\"\
-          , pipeline)\n                    if os.path.exists(pipeline_path):\n   \
-          \                     shutil.copytree(\n                            pipeline_path,\n\
+          )\n                os.mkdir(temp_pipeline_dir)\n                temp_models_dir\
+          \ = os.path.join(temp_dir, \"instructlab\", \"sdg\", \"models\")\n     \
+          \           os.makedirs(temp_models_dir, exist_ok=True)\n\n            \
+          \    for d in data_dirs:\n                    pipeline_path = os.path.join(d,\
+          \ \"pipelines\", pipeline)\n                    if os.path.exists(pipeline_path):\n\
+          \                        shutil.copytree(\n                            pipeline_path,\n\
           \                            temp_pipeline_dir,\n                      \
           \      dirs_exist_ok=True,\n                        )\n                \
-          \        break\n\n                # Build new skills.yaml path\n       \
-          \         new_skills_recipe = os.path.join(temp_dir, \"skills.yaml\")\n\
-          \                print(f\"New skills recipe path: {new_skills_recipe}\"\
-          )\n\n                # Override XDG_DATA_DIRS with the temporary directory\n\
-          \                # This allows SDG to read the new skills.yaml since it's\
-          \ looking into XDG_DATA_DIRS\n                # and looks for a default_data_recipes\
-          \ directory with a skills.yaml file\n                os.environ[\"XDG_DATA_DIRS\"\
-          ] = f\"{temp_dir}\"\n\n                # Try to set the precomputed skills\
-          \ data ratio again\n                try:\n                    set_precomputed_skills_data_ratio(\n\
+          \        break\n\n                # The docling SDG model is also needed,\
+          \ so just copy the models config which has paths to the\n              \
+          \  # default models.\n                for d in data_dirs:\n            \
+          \        models_config_path = os.path.join(d, \"models\", \"config.yaml\"\
+          )\n                    if os.path.exists(models_config_path):\n        \
+          \                shutil.copy(\n                            models_config_path,\n\
+          \                            os.path.join(temp_models_dir, \"config.yaml\"\
+          ),\n                        )\n                        break\n\n       \
+          \         # Build new skills.yaml path\n                new_skills_recipe\
+          \ = os.path.join(temp_dir, \"skills.yaml\")\n                print(f\"New\
+          \ skills recipe path: {new_skills_recipe}\")\n\n                # Override\
+          \ XDG_DATA_DIRS with the temporary directory\n                # This allows\
+          \ SDG to read the new skills.yaml since it's looking into XDG_DATA_DIRS\n\
+          \                # and looks for a default_data_recipes directory with a\
+          \ skills.yaml file\n                os.environ[\"XDG_DATA_DIRS\"] = f\"\
+          {temp_dir}\"\n\n                # Try to set the precomputed skills data\
+          \ ratio again\n                try:\n                    set_precomputed_skills_data_ratio(\n\
           \                        sampling_size=sdg_sampling_size, skills_recipe=new_skills_recipe\n\
           \                    )\n                    print(\n                   \
           \     f\"Successfully set precomputed skills data ratio to {sdg_sampling_size}\"\
@@ -1825,7 +1867,7 @@ deploymentSpec:
           \      client=client,\n                        num_instructions_to_generate=num_instructions_to_generate,\n\
           \                        output_dir=sdg_path,\n                        taxonomy=taxonomy_path,\n\
           \                        taxonomy_base=taxonomy_base,\n                \
-          \        model_name=model,\n                        pipeline=pipeline,\n\
+          \        model_name=\"mixtral\",\n                        pipeline=pipeline,\n\
           \                        chunk_word_count=1000,\n                      \
           \  server_ctx_size=4096,\n                    )\n                except\
           \ Exception as e:\n                    print(f\"Failed to set precomputed\
@@ -1999,7 +2041,7 @@ deploymentSpec:
           modelVersionName\"] = output_model_version\n    model.metadata[\"modelVersionId\"\
           ] = model_version_id\n    model.metadata[\"registeredModelId\"] = registered_model.id\n\
           \n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
 pipelineInfo:
   description: InstructLab pipeline
   displayName: InstructLab
@@ -2151,9 +2193,21 @@ root:
         inputs:
           parameters:
             uri:
-              componentInputParameter: sdg_base_model
+              runtimeValue:
+                constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
         taskInfo:
           name: importer
+      importer-2:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-importer-2
+        inputs:
+          parameters:
+            uri:
+              componentInputParameter: sdg_base_model
+        taskInfo:
+          name: importer-2
       knowledge-processed-data-to-artifact-op:
         cachingOptions: {}
         componentRef:
@@ -2169,13 +2223,13 @@ root:
           name: comp-model-to-pvc-op
         dependentTasks:
         - createpvc-2
-        - importer
+        - importer-2
         inputs:
           artifacts:
             model:
               taskOutputArtifact:
                 outputArtifactKey: artifact
-                producerTask: importer
+                producerTask: importer-2
         taskInfo:
           name: model-to-pvc-op
       pvc-to-mmlu-branch-op:
@@ -2416,7 +2470,13 @@ root:
           name: comp-sdg-op
         dependentTasks:
         - createpvc
+        - importer
         inputs:
+          artifacts:
+            tokenizer_model:
+              taskOutputArtifact:
+                outputArtifactKey: artifact
+                producerTask: importer
           parameters:
             num_instructions_to_generate:
               componentInputParameter: sdg_scale_factor
