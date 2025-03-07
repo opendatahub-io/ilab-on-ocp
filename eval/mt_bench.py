@@ -1,7 +1,7 @@
 # type: ignore
 # pylint: disable=import-outside-toplevel,import-error
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 from kfp.dsl import component
 
@@ -16,6 +16,12 @@ def run_mt_bench_op(
     # https://github.com/instructlab/eval/blob/main/src/instructlab/eval/mt_bench.py#L36
     max_workers: str,
     models_folder: str,
+    http_proxy_env_var_name: str,
+    http_proxy_env_var_value: str,
+    https_proxy_env_var_name: str,
+    https_proxy_env_var_value: str,
+    no_proxy_env_var_name: str,
+    no_proxy_env_var_value: str,
     output_path: str = "/output/mt_bench_data.json",
     judge_secret_name: str = None,
 ) -> NamedTuple("outputs", best_model=str, best_score=float):
@@ -66,6 +72,10 @@ def run_mt_bench_op(
             raise RuntimeError(
                 f"Error fetching secret: {response.status_code} {response.text}"
             )
+
+    os.environ[http_proxy_env_var_name] = http_proxy_env_var_value
+    os.environ[https_proxy_env_var_name] = https_proxy_env_var_value
+    os.environ[no_proxy_env_var_name] = no_proxy_env_var_value
 
     if judge_secret_name is None:
         judge_api_key = os.getenv("JUDGE_API_KEY", "")

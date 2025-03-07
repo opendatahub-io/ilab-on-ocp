@@ -8,10 +8,13 @@
 #    final_eval_few_shots: int [Default: 5.0]
 #    final_eval_max_workers: str [Default: 'auto']
 #    final_eval_merge_system_user_message: bool [Default: False]
+#    http_proxy: str [Default: '']
+#    https_proxy: str [Default: '']
 #    k8s_storage_class_name: str [Default: 'standard']
 #    k8s_storage_size: str [Default: '100Gi']
 #    mt_bench_max_workers: str [Default: 'auto']
 #    mt_bench_merge_system_user_message: bool [Default: False]
+#    no_proxy: str [Default: 'localhost,127.0.0.1,svc.cluster.local,0,1,2,3,4,5,6,7,8,9']
 #    output_model_name: str
 #    output_model_registry_api_url: str
 #    output_model_registry_name: str
@@ -535,6 +538,14 @@ components:
           parameterType: STRING
         few_shots:
           parameterType: NUMBER_INTEGER
+        http_proxy_env_var_name:
+          parameterType: STRING
+        http_proxy_env_var_value:
+          parameterType: STRING
+        https_proxy_env_var_name:
+          parameterType: STRING
+        https_proxy_env_var_value:
+          parameterType: STRING
         judge_secret_name:
           isOptional: true
           parameterType: STRING
@@ -550,6 +561,10 @@ components:
           defaultValue: /output/mt_bench_branch
           isOptional: true
           parameterType: STRING
+        no_proxy_env_var_name:
+          parameterType: STRING
+        no_proxy_env_var_value:
+          parameterType: STRING
         sdg_path:
           defaultValue: /input/sdg
           isOptional: true
@@ -562,6 +577,14 @@ components:
     executorLabel: exec-run-mt-bench-op
     inputDefinitions:
       parameters:
+        http_proxy_env_var_name:
+          parameterType: STRING
+        http_proxy_env_var_value:
+          parameterType: STRING
+        https_proxy_env_var_name:
+          parameterType: STRING
+        https_proxy_env_var_value:
+          parameterType: STRING
         judge_secret_name:
           isOptional: true
           parameterType: STRING
@@ -570,6 +593,10 @@ components:
         merge_system_user_message:
           parameterType: BOOLEAN
         models_folder:
+          parameterType: STRING
+        no_proxy_env_var_name:
+          parameterType: STRING
+        no_proxy_env_var_value:
           parameterType: STRING
         output_path:
           defaultValue: /output/mt_bench_data.json
@@ -585,6 +612,18 @@ components:
     executorLabel: exec-sdg-op
     inputDefinitions:
       parameters:
+        http_proxy_env_var_name:
+          parameterType: STRING
+        http_proxy_env_var_value:
+          parameterType: STRING
+        https_proxy_env_var_name:
+          parameterType: STRING
+        https_proxy_env_var_value:
+          parameterType: STRING
+        no_proxy_env_var_name:
+          parameterType: STRING
+        no_proxy_env_var_value:
+          parameterType: STRING
         num_instructions_to_generate:
           parameterType: NUMBER_INTEGER
         pipeline:
@@ -1190,6 +1229,9 @@ deploymentSpec:
           \ *\n\ndef run_final_eval_op(\n    base_model_dir: str,\n    base_branch:\
           \ str,\n    candidate_branch: str,\n    max_workers: str,\n    few_shots:\
           \ int,\n    batch_size: str,\n    merge_system_user_message: bool,\n   \
+          \ http_proxy_env_var_name: str,\n    http_proxy_env_var_value: str,\n  \
+          \  https_proxy_env_var_name: str,\n    https_proxy_env_var_value: str,\n\
+          \    no_proxy_env_var_name: str,\n    no_proxy_env_var_value: str,\n   \
           \ candidate_model: str = None,\n    taxonomy_path: str = \"/input/taxonomy\"\
           ,\n    sdg_path: str = \"/input/sdg\",\n    mmlu_branch_output_path: str\
           \ = \"/output/mmlu_branch\",\n    mt_bench_branch_output_path: str = \"\
@@ -1199,26 +1241,28 @@ deploymentSpec:
           \    import torch\n    from instructlab.eval.mmlu import MMLUBranchEvaluator\n\
           \    from instructlab.eval.mt_bench import MTBenchBranchEvaluator\n    from\
           \ instructlab.model.evaluate import qa_pairs_to_qna_to_avg_scores, sort_score\n\
-          \n    judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls\
-          \ = os.path.exists(judge_ca_cert_path) and (\n        os.path.getsize(judge_ca_cert_path)\
-          \ > 0\n    )\n    judge_http_client = httpx.Client(verify=judge_ca_cert_path)\
-          \ if use_tls else None\n\n    print(\"Starting Final Eval...\")\n\n    def\
-          \ launch_vllm(\n        model_path: str, gpu_count: int, retries: int =\
-          \ 120, delay: int = 10\n    ) -> tuple:\n        import subprocess\n   \
-          \     import sys\n        import time\n\n        import requests\n     \
-          \   from instructlab.model.backends.common import free_tcp_ipv4_port\n\n\
-          \        free_port = free_tcp_ipv4_port(\"127.0.0.1\")\n        port = str(free_port)\n\
-          \        vllm_server = f\"http://127.0.0.1:{port}/v1\"\n\n        command\
-          \ = [\n            sys.executable,\n            \"-m\",\n            \"\
-          vllm.entrypoints.openai.api_server\",\n            \"--port\",\n       \
-          \     port,\n            \"--model\",\n            model_path,\n       \
-          \ ]\n        if gpu_count > 0:\n            command += [\n             \
-          \   \"--tensor-parallel-size\",\n                str(gpu_count),\n     \
-          \       ]\n\n        process = subprocess.Popen(args=command)\n\n      \
-          \  print(f\"Waiting for vLLM server to start at {vllm_server}...\")\n\n\
-          \        for attempt in range(retries):\n            try:\n            \
-          \    response = requests.get(f\"{vllm_server}/models\", timeout=10)\n  \
-          \              if response.status_code == 200:\n                    print(f\"\
+          \n    os.environ[http_proxy_env_var_name] = http_proxy_env_var_value\n \
+          \   os.environ[https_proxy_env_var_name] = https_proxy_env_var_value\n \
+          \   os.environ[no_proxy_env_var_name] = no_proxy_env_var_value\n\n    judge_ca_cert_path\
+          \ = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls = os.path.exists(judge_ca_cert_path)\
+          \ and (\n        os.path.getsize(judge_ca_cert_path) > 0\n    )\n    judge_http_client\
+          \ = httpx.Client(verify=judge_ca_cert_path) if use_tls else None\n\n   \
+          \ print(\"Starting Final Eval...\")\n\n    def launch_vllm(\n        model_path:\
+          \ str, gpu_count: int, retries: int = 120, delay: int = 10\n    ) -> tuple:\n\
+          \        import subprocess\n        import sys\n        import time\n\n\
+          \        import requests\n        from instructlab.model.backends.common\
+          \ import free_tcp_ipv4_port\n\n        free_port = free_tcp_ipv4_port(\"\
+          127.0.0.1\")\n        port = str(free_port)\n        vllm_server = f\"http://127.0.0.1:{port}/v1\"\
+          \n\n        command = [\n            sys.executable,\n            \"-m\"\
+          ,\n            \"vllm.entrypoints.openai.api_server\",\n            \"--port\"\
+          ,\n            port,\n            \"--model\",\n            model_path,\n\
+          \        ]\n        if gpu_count > 0:\n            command += [\n      \
+          \          \"--tensor-parallel-size\",\n                str(gpu_count),\n\
+          \            ]\n\n        process = subprocess.Popen(args=command)\n\n \
+          \       print(f\"Waiting for vLLM server to start at {vllm_server}...\"\
+          )\n\n        for attempt in range(retries):\n            try:\n        \
+          \        response = requests.get(f\"{vllm_server}/models\", timeout=10)\n\
+          \                if response.status_code == 200:\n                    print(f\"\
           vLLM server is up and running at {vllm_server}.\")\n                   \
           \ return process, vllm_server\n            except requests.ConnectionError:\n\
           \                pass\n\n            print(\n                f\"Server not\
@@ -1482,14 +1526,17 @@ deploymentSpec:
           \ generate_answers,judgment uses a magic word for its mt_bench evaluator\
           \  - 'auto'\n    # with 'auto', number of gpus allocated for serving is\
           \ calculated based on environment\n    # https://github.com/instructlab/eval/blob/main/src/instructlab/eval/mt_bench.py#L36\n\
-          \    max_workers: str,\n    models_folder: str,\n    output_path: str =\
-          \ \"/output/mt_bench_data.json\",\n    judge_secret_name: str = None,\n\
-          ) -> NamedTuple(\"outputs\", best_model=str, best_score=float):\n    import\
-          \ base64\n    import json\n    import os\n    import subprocess\n\n    import\
-          \ httpx\n    import requests\n    import torch\n    from instructlab.eval.mt_bench\
-          \ import MTBenchEvaluator\n\n    def fetch_secret(secret_name, keys):\n\
-          \        # Kubernetes API server inside the cluster\n        K8S_API_SERVER\
-          \ = \"https://kubernetes.default.svc\"\n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          \    max_workers: str,\n    models_folder: str,\n    http_proxy_env_var_name:\
+          \ str,\n    http_proxy_env_var_value: str,\n    https_proxy_env_var_name:\
+          \ str,\n    https_proxy_env_var_value: str,\n    no_proxy_env_var_name:\
+          \ str,\n    no_proxy_env_var_value: str,\n    output_path: str = \"/output/mt_bench_data.json\"\
+          ,\n    judge_secret_name: str = None,\n) -> NamedTuple(\"outputs\", best_model=str,\
+          \ best_score=float):\n    import base64\n    import json\n    import os\n\
+          \    import subprocess\n\n    import httpx\n    import requests\n    import\
+          \ torch\n    from instructlab.eval.mt_bench import MTBenchEvaluator\n\n\
+          \    def fetch_secret(secret_name, keys):\n        # Kubernetes API server\
+          \ inside the cluster\n        K8S_API_SERVER = \"https://kubernetes.default.svc\"\
+          \n        NAMESPACE_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
           \n        TOKEN_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\
           \n\n        # Fetch namespace\n        try:\n            with open(NAMESPACE_PATH,\
           \ \"r\") as f:\n                namespace = f.read().strip()\n        except\
@@ -1508,15 +1555,17 @@ deploymentSpec:
           \             if key in secret_data:\n                    values.append(base64.b64decode(secret_data[key]).decode())\n\
           \            return values\n        else:\n            raise RuntimeError(\n\
           \                f\"Error fetching secret: {response.status_code} {response.text}\"\
-          \n            )\n\n    if judge_secret_name is None:\n        judge_api_key\
-          \ = os.getenv(\"JUDGE_API_KEY\", \"\")\n        judge_model_name = os.getenv(\"\
-          JUDGE_NAME\")\n        judge_endpoint = os.getenv(\"JUDGE_ENDPOINT\")\n\
-          \    else:\n        print(\"Eval Judge secret specified, fetching...\")\n\
-          \        judge_api_key, judge_model_name, judge_endpoint = fetch_secret(\n\
-          \            judge_secret_name, [\"api_token\", \"model_name\", \"endpoint\"\
-          ]\n        )\n        print(\"Eval Judge secret data retrieved.\")\n\n \
-          \   judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls\
-          \ = os.path.exists(judge_ca_cert_path) and (\n        os.path.getsize(judge_ca_cert_path)\
+          \n            )\n\n    os.environ[http_proxy_env_var_name] = http_proxy_env_var_value\n\
+          \    os.environ[https_proxy_env_var_name] = https_proxy_env_var_value\n\
+          \    os.environ[no_proxy_env_var_name] = no_proxy_env_var_value\n\n    if\
+          \ judge_secret_name is None:\n        judge_api_key = os.getenv(\"JUDGE_API_KEY\"\
+          , \"\")\n        judge_model_name = os.getenv(\"JUDGE_NAME\")\n        judge_endpoint\
+          \ = os.getenv(\"JUDGE_ENDPOINT\")\n    else:\n        print(\"Eval Judge\
+          \ secret specified, fetching...\")\n        judge_api_key, judge_model_name,\
+          \ judge_endpoint = fetch_secret(\n            judge_secret_name, [\"api_token\"\
+          , \"model_name\", \"endpoint\"]\n        )\n        print(\"Eval Judge secret\
+          \ data retrieved.\")\n\n    judge_ca_cert_path = os.getenv(\"JUDGE_CA_CERT_PATH\"\
+          )\n    use_tls = os.path.exists(judge_ca_cert_path) and (\n        os.path.getsize(judge_ca_cert_path)\
           \ > 0\n    )\n    judge_http_client = httpx.Client(verify=judge_ca_cert_path)\
           \ if use_tls else None\n\n    def launch_vllm(\n        model_path: str,\
           \ gpu_count: int, retries: int = 120, delay: int = 10\n    ) -> tuple:\n\
@@ -1636,7 +1685,10 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef sdg_op(\n    num_instructions_to_generate: int,\n    pipeline:\
           \ str,\n    repo_branch: Optional[str],\n    repo_pr: Optional[int],\n \
-          \   taxonomy_path: str = \"/data/taxonomy\",\n    sdg_path: str = \"/data/sdg\"\
+          \   http_proxy_env_var_name: str,\n    http_proxy_env_var_value: str,\n\
+          \    https_proxy_env_var_name: str,\n    https_proxy_env_var_value: str,\n\
+          \    no_proxy_env_var_name: str,\n    no_proxy_env_var_value: str,\n   \
+          \ taxonomy_path: str = \"/data/taxonomy\",\n    sdg_path: str = \"/data/sdg\"\
           ,\n    sdg_sampling_size: float = 1.0,\n    sdg_secret_name: str = None,\n\
           \    taxonomy_repo_secret: str = None,\n    repo_url: str = None,\n):\n\
           \    import base64\n    import os\n    import re\n    import shutil\n  \
@@ -1683,21 +1735,23 @@ deploymentSpec:
           \ github.com, gitlab.com) from an SSH repository URL.\"\"\"\n        match\
           \ = re.match(r\"git@([\\w.-]+):\", repo_url)\n        if match:\n      \
           \      return match.group(1)  # Extracted host\n        raise ValueError(f\"\
-          Invalid SSH repository URL: {repo_url}\")\n\n    if not taxonomy_repo_secret:\n\
-          \        username = os.getenv(\"GIT_USERNAME\")\n        token = os.getenv(\"\
-          GIT_TOKEN\")\n        ssh_key = os.getenv(\"GIT_SSH_KEY\")\n    else:\n\
-          \        print(\"SDG Repo secret specified, fetching...\")\n        username,\
-          \ token, ssh_key = fetch_secret(\n            taxonomy_repo_secret, [\"\
-          GIT_USERNAME\", \"GIT_TOKEN\", \"GIT_SSH_KEY\"]\n        )\n        print(\"\
-          SDG Repo secret data retrieved.\")\n\n    # Whether not provided via env\
-          \ or secret\n    # Assume the repo is public\n    if not username or ssh_key:\n\
-          \        print(\"No credentials provided for taxonomy repo, assuming public\
-          \ repo...\")\n\n    ca_cert_path = os.getenv(\"SDG_CA_CERT_PATH\")\n   \
-          \ env = os.environ.copy()\n\n    # Todo(HumairAK): should be platform cert\n\
-          \    # Set custom CA certificate if provided\n    if ca_cert_path:\n   \
-          \     print(f\"SSL CA Info detected. ca cert path: {ca_cert_path}\")\n \
-          \       env[\"GIT_SSL_CAINFO\"] = ca_cert_path\n        # Consume this in\
-          \ the process execution environment\n        # This is required for read_taxonomy\
+          Invalid SSH repository URL: {repo_url}\")\n\n    os.environ[http_proxy_env_var_name]\
+          \ = http_proxy_env_var_value\n    os.environ[https_proxy_env_var_name] =\
+          \ https_proxy_env_var_value\n    os.environ[no_proxy_env_var_name] = no_proxy_env_var_value\n\
+          \n    if not taxonomy_repo_secret:\n        username = os.getenv(\"GIT_USERNAME\"\
+          )\n        token = os.getenv(\"GIT_TOKEN\")\n        ssh_key = os.getenv(\"\
+          GIT_SSH_KEY\")\n    else:\n        print(\"SDG Repo secret specified, fetching...\"\
+          )\n        username, token, ssh_key = fetch_secret(\n            taxonomy_repo_secret,\
+          \ [\"GIT_USERNAME\", \"GIT_TOKEN\", \"GIT_SSH_KEY\"]\n        )\n      \
+          \  print(\"SDG Repo secret data retrieved.\")\n\n    # Whether not provided\
+          \ via env or secret\n    # Assume the repo is public\n    if not username\
+          \ or ssh_key:\n        print(\"No credentials provided for taxonomy repo,\
+          \ assuming public repo...\")\n\n    ca_cert_path = os.getenv(\"SDG_CA_CERT_PATH\"\
+          )\n    env = os.environ.copy()\n\n    # Todo(HumairAK): should be platform\
+          \ cert\n    # Set custom CA certificate if provided\n    if ca_cert_path:\n\
+          \        print(f\"SSL CA Info detected. ca cert path: {ca_cert_path}\")\n\
+          \        env[\"GIT_SSL_CAINFO\"] = ca_cert_path\n        # Consume this\
+          \ in the process execution environment\n        # This is required for read_taxonomy\
           \ calls which\n        # Perform nested calls to git clones.\n        os.environ[\"\
           GIT_SSL_CAINFO\"] = ca_cert_path\n\n    git_credentials_path = \"\"\n  \
           \  ssh_key_path = \"\"\n    # Username/PAT takes precedence over ssh\n \
@@ -2375,12 +2429,27 @@ root:
                 constant: /output/phase_2/model/hf_format/candidate_model
             few_shots:
               componentInputParameter: final_eval_few_shots
+            http_proxy_env_var_name:
+              runtimeValue:
+                constant: http_proxy
+            http_proxy_env_var_value:
+              componentInputParameter: https_proxy
+            https_proxy_env_var_name:
+              runtimeValue:
+                constant: https_proxy
+            https_proxy_env_var_value:
+              componentInputParameter: https_proxy
             judge_secret_name:
               componentInputParameter: eval_judge_secret
             max_workers:
               componentInputParameter: final_eval_max_workers
             merge_system_user_message:
               componentInputParameter: final_eval_merge_system_user_message
+            no_proxy_env_var_name:
+              runtimeValue:
+                constant: no_proxy
+            no_proxy_env_var_value:
+              componentInputParameter: no_proxy
             pipelinechannel--eval_gpu_identifier:
               componentInputParameter: eval_gpu_identifier
         taskInfo:
@@ -2397,6 +2466,16 @@ root:
             accelerator_type:
               runtimeValue:
                 constant: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
+            http_proxy_env_var_name:
+              runtimeValue:
+                constant: http_proxy
+            http_proxy_env_var_value:
+              componentInputParameter: https_proxy
+            https_proxy_env_var_name:
+              runtimeValue:
+                constant: https_proxy
+            https_proxy_env_var_value:
+              componentInputParameter: https_proxy
             judge_secret_name:
               componentInputParameter: eval_judge_secret
             max_workers:
@@ -2406,6 +2485,11 @@ root:
             models_folder:
               runtimeValue:
                 constant: /output/phase_2/model/hf_format
+            no_proxy_env_var_name:
+              runtimeValue:
+                constant: no_proxy
+            no_proxy_env_var_value:
+              componentInputParameter: no_proxy
             pipelinechannel--eval_gpu_identifier:
               componentInputParameter: eval_gpu_identifier
         taskInfo:
@@ -2418,6 +2502,21 @@ root:
         - createpvc
         inputs:
           parameters:
+            http_proxy_env_var_name:
+              runtimeValue:
+                constant: http_proxy
+            http_proxy_env_var_value:
+              componentInputParameter: https_proxy
+            https_proxy_env_var_name:
+              runtimeValue:
+                constant: https_proxy
+            https_proxy_env_var_value:
+              componentInputParameter: https_proxy
+            no_proxy_env_var_name:
+              runtimeValue:
+                constant: no_proxy
+            no_proxy_env_var_value:
+              componentInputParameter: no_proxy
             num_instructions_to_generate:
               componentInputParameter: sdg_scale_factor
             pipeline:
@@ -2543,6 +2642,18 @@ root:
           based judges)
         isOptional: true
         parameterType: BOOLEAN
+      http_proxy:
+        defaultValue: ''
+        description: URL of the HTTP proxy server used for outbound HTTP requests.
+          An empty string (default) indicates that no HTTP proxy is configured.
+        isOptional: true
+        parameterType: STRING
+      https_proxy:
+        defaultValue: ''
+        description: URL of the HTTPS proxy server used for outbound HTTPS requests.
+          An empty string (default) indicates that no HTTPS proxy is configured.
+        isOptional: true
+        parameterType: STRING
       k8s_storage_class_name:
         defaultValue: standard
         description: A Kubernetes StorageClass name for persistent volumes. Selected
@@ -2567,6 +2678,14 @@ root:
           and user messages (required for Mistral based judges)
         isOptional: true
         parameterType: BOOLEAN
+      no_proxy:
+        defaultValue: localhost,127.0.0.1,svc.cluster.local,0,1,2,3,4,5,6,7,8,9
+        description: A comma-separated list of hostnames, IP addresses, or domains
+          that should bypass the proxy. The default value "localhost,127.0.0.1,svc.cluster.local,0,1,2,3,4,5,6,7,8,9"
+          ensures that local addresses and the internal cluster domain do not route
+          through the proxy.
+        isOptional: true
+        parameterType: STRING
       output_model_name:
         description: ' Model Registration parameter. The name of the model used during
           model registration.'
