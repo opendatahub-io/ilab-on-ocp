@@ -4,7 +4,7 @@ PYTHON_IMAGE          ?= "quay.io/modh/odh-generic-data-science-notebook@sha256:
 TOOLBOX_IMAGE         ?= "registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770"                     # v9.5
 OC_IMAGE              ?= "registry.redhat.io/openshift4/ose-cli@sha256:08bdbfae224dd39c81689ee73c183619d6b41eba7ac04f0dce7ee79f50531d0b"               # v4.15.0
 RHELAI_IMAGE          ?= "registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae" # v1.3.2
-RUNTIME_GENERIC_IMAGE ?= "quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:a26aa185a77f0ea858eb12bc5c0ae1f9cd17d5b4f5fe3697bce34c958ee18b2f"    # main-4cd108e
+RUNTIME_GENERIC_IMAGE ?= "quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2"    # main-3dd8265
 
 standalone:
 	python3 pipeline.py gen-standalone
