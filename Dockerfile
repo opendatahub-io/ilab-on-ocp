@@ -13,7 +13,8 @@ RUN echo "Installing Runtime Dependencies" && \
     dnf install -y skopeo && dnf clean all && \
     pip install --no-cache-dir -r requirements.txt && \
     chgrp -R 0 . && \
-    chmod -R g=u .
+    chmod -R g=u . && \
+    mv mixtral-tokenizer /models
 
 USER default
 
