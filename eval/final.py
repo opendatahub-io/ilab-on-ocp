@@ -15,8 +15,6 @@ def run_final_eval_op(
     few_shots: int,
     batch_size: str,
     merge_system_user_message: bool,
-    http_proxy_env_var_name: str,
-    http_proxy_env_var_value: str,
     https_proxy_env_var_name: str,
     https_proxy_env_var_value: str,
     no_proxy_env_var_name: str,
@@ -41,7 +39,6 @@ def run_final_eval_op(
     from instructlab.eval.mt_bench import MTBenchBranchEvaluator
     from instructlab.model.evaluate import qa_pairs_to_qna_to_avg_scores, sort_score
 
-    os.environ[http_proxy_env_var_name] = http_proxy_env_var_value
     os.environ[https_proxy_env_var_name] = https_proxy_env_var_value
     os.environ[no_proxy_env_var_name] = no_proxy_env_var_value
 

@@ -55,8 +55,6 @@ def sdg_op(
     pipeline: str,
     repo_branch: Optional[str],
     repo_pr: Optional[int],
-    http_proxy_env_var_name: str,
-    http_proxy_env_var_value: str,
     https_proxy_env_var_name: str,
     https_proxy_env_var_value: str,
     no_proxy_env_var_name: str,
@@ -157,7 +155,6 @@ def sdg_op(
             return match.group(1)  # Extracted host
         raise ValueError(f"Invalid SSH repository URL: {repo_url}")
 
-    os.environ[http_proxy_env_var_name] = http_proxy_env_var_value
     os.environ[https_proxy_env_var_name] = https_proxy_env_var_value
     os.environ[no_proxy_env_var_name] = no_proxy_env_var_value
 

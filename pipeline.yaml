@@ -8,7 +8,6 @@
 #    final_eval_few_shots: int [Default: 5.0]
 #    final_eval_max_workers: str [Default: 'auto']
 #    final_eval_merge_system_user_message: bool [Default: False]
-#    http_proxy: str [Default: '']
 #    https_proxy: str [Default: '']
 #    k8s_storage_class_name: str [Default: 'standard']
 #    k8s_storage_size: str [Default: '100Gi']
@@ -538,10 +537,6 @@ components:
           parameterType: STRING
         few_shots:
           parameterType: NUMBER_INTEGER
-        http_proxy_env_var_name:
-          parameterType: STRING
-        http_proxy_env_var_value:
-          parameterType: STRING
         https_proxy_env_var_name:
           parameterType: STRING
         https_proxy_env_var_value:
@@ -577,10 +572,6 @@ components:
     executorLabel: exec-run-mt-bench-op
     inputDefinitions:
       parameters:
-        http_proxy_env_var_name:
-          parameterType: STRING
-        http_proxy_env_var_value:
-          parameterType: STRING
         https_proxy_env_var_name:
           parameterType: STRING
         https_proxy_env_var_value:
@@ -612,10 +603,6 @@ components:
     executorLabel: exec-sdg-op
     inputDefinitions:
       parameters:
-        http_proxy_env_var_name:
-          parameterType: STRING
-        http_proxy_env_var_value:
-          parameterType: STRING
         https_proxy_env_var_name:
           parameterType: STRING
         https_proxy_env_var_value:
@@ -1229,8 +1216,7 @@ deploymentSpec:
           \ *\n\ndef run_final_eval_op(\n    base_model_dir: str,\n    base_branch:\
           \ str,\n    candidate_branch: str,\n    max_workers: str,\n    few_shots:\
           \ int,\n    batch_size: str,\n    merge_system_user_message: bool,\n   \
-          \ http_proxy_env_var_name: str,\n    http_proxy_env_var_value: str,\n  \
-          \  https_proxy_env_var_name: str,\n    https_proxy_env_var_value: str,\n\
+          \ https_proxy_env_var_name: str,\n    https_proxy_env_var_value: str,\n\
           \    no_proxy_env_var_name: str,\n    no_proxy_env_var_value: str,\n   \
           \ candidate_model: str = None,\n    taxonomy_path: str = \"/input/taxonomy\"\
           ,\n    sdg_path: str = \"/input/sdg\",\n    mmlu_branch_output_path: str\
@@ -1241,9 +1227,8 @@ deploymentSpec:
           \    import torch\n    from instructlab.eval.mmlu import MMLUBranchEvaluator\n\
           \    from instructlab.eval.mt_bench import MTBenchBranchEvaluator\n    from\
           \ instructlab.model.evaluate import qa_pairs_to_qna_to_avg_scores, sort_score\n\
-          \n    os.environ[http_proxy_env_var_name] = http_proxy_env_var_value\n \
-          \   os.environ[https_proxy_env_var_name] = https_proxy_env_var_value\n \
-          \   os.environ[no_proxy_env_var_name] = no_proxy_env_var_value\n\n    judge_ca_cert_path\
+          \n    os.environ[https_proxy_env_var_name] = https_proxy_env_var_value\n\
+          \    os.environ[no_proxy_env_var_name] = no_proxy_env_var_value\n\n    judge_ca_cert_path\
           \ = os.getenv(\"JUDGE_CA_CERT_PATH\")\n    use_tls = os.path.exists(judge_ca_cert_path)\
           \ and (\n        os.path.getsize(judge_ca_cert_path) > 0\n    )\n    judge_http_client\
           \ = httpx.Client(verify=judge_ca_cert_path) if use_tls else None\n\n   \
@@ -1526,8 +1511,7 @@ deploymentSpec:
           \ generate_answers,judgment uses a magic word for its mt_bench evaluator\
           \  - 'auto'\n    # with 'auto', number of gpus allocated for serving is\
           \ calculated based on environment\n    # https://github.com/instructlab/eval/blob/main/src/instructlab/eval/mt_bench.py#L36\n\
-          \    max_workers: str,\n    models_folder: str,\n    http_proxy_env_var_name:\
-          \ str,\n    http_proxy_env_var_value: str,\n    https_proxy_env_var_name:\
+          \    max_workers: str,\n    models_folder: str,\n    https_proxy_env_var_name:\
           \ str,\n    https_proxy_env_var_value: str,\n    no_proxy_env_var_name:\
           \ str,\n    no_proxy_env_var_value: str,\n    output_path: str = \"/output/mt_bench_data.json\"\
           ,\n    judge_secret_name: str = None,\n) -> NamedTuple(\"outputs\", best_model=str,\
@@ -1555,8 +1539,7 @@ deploymentSpec:
           \             if key in secret_data:\n                    values.append(base64.b64decode(secret_data[key]).decode())\n\
           \            return values\n        else:\n            raise RuntimeError(\n\
           \                f\"Error fetching secret: {response.status_code} {response.text}\"\
-          \n            )\n\n    os.environ[http_proxy_env_var_name] = http_proxy_env_var_value\n\
-          \    os.environ[https_proxy_env_var_name] = https_proxy_env_var_value\n\
+          \n            )\n\n    os.environ[https_proxy_env_var_name] = https_proxy_env_var_value\n\
           \    os.environ[no_proxy_env_var_name] = no_proxy_env_var_value\n\n    if\
           \ judge_secret_name is None:\n        judge_api_key = os.getenv(\"JUDGE_API_KEY\"\
           , \"\")\n        judge_model_name = os.getenv(\"JUDGE_NAME\")\n        judge_endpoint\
@@ -1685,8 +1668,7 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef sdg_op(\n    num_instructions_to_generate: int,\n    pipeline:\
           \ str,\n    repo_branch: Optional[str],\n    repo_pr: Optional[int],\n \
-          \   http_proxy_env_var_name: str,\n    http_proxy_env_var_value: str,\n\
-          \    https_proxy_env_var_name: str,\n    https_proxy_env_var_value: str,\n\
+          \   https_proxy_env_var_name: str,\n    https_proxy_env_var_value: str,\n\
           \    no_proxy_env_var_name: str,\n    no_proxy_env_var_value: str,\n   \
           \ taxonomy_path: str = \"/data/taxonomy\",\n    sdg_path: str = \"/data/sdg\"\
           ,\n    sdg_sampling_size: float = 1.0,\n    sdg_secret_name: str = None,\n\
@@ -1735,9 +1717,8 @@ deploymentSpec:
           \ github.com, gitlab.com) from an SSH repository URL.\"\"\"\n        match\
           \ = re.match(r\"git@([\\w.-]+):\", repo_url)\n        if match:\n      \
           \      return match.group(1)  # Extracted host\n        raise ValueError(f\"\
-          Invalid SSH repository URL: {repo_url}\")\n\n    os.environ[http_proxy_env_var_name]\
-          \ = http_proxy_env_var_value\n    os.environ[https_proxy_env_var_name] =\
-          \ https_proxy_env_var_value\n    os.environ[no_proxy_env_var_name] = no_proxy_env_var_value\n\
+          Invalid SSH repository URL: {repo_url}\")\n\n    os.environ[https_proxy_env_var_name]\
+          \ = https_proxy_env_var_value\n    os.environ[no_proxy_env_var_name] = no_proxy_env_var_value\n\
           \n    if not taxonomy_repo_secret:\n        username = os.getenv(\"GIT_USERNAME\"\
           )\n        token = os.getenv(\"GIT_TOKEN\")\n        ssh_key = os.getenv(\"\
           GIT_SSH_KEY\")\n    else:\n        print(\"SDG Repo secret specified, fetching...\"\
@@ -2429,11 +2410,6 @@ root:
                 constant: /output/phase_2/model/hf_format/candidate_model
             few_shots:
               componentInputParameter: final_eval_few_shots
-            http_proxy_env_var_name:
-              runtimeValue:
-                constant: http_proxy
-            http_proxy_env_var_value:
-              componentInputParameter: https_proxy
             https_proxy_env_var_name:
               runtimeValue:
                 constant: https_proxy
@@ -2466,11 +2442,6 @@ root:
             accelerator_type:
               runtimeValue:
                 constant: '{{$.inputs.parameters[''pipelinechannel--eval_gpu_identifier'']}}'
-            http_proxy_env_var_name:
-              runtimeValue:
-                constant: http_proxy
-            http_proxy_env_var_value:
-              componentInputParameter: https_proxy
             https_proxy_env_var_name:
               runtimeValue:
                 constant: https_proxy
@@ -2502,11 +2473,6 @@ root:
         - createpvc
         inputs:
           parameters:
-            http_proxy_env_var_name:
-              runtimeValue:
-                constant: http_proxy
-            http_proxy_env_var_value:
-              componentInputParameter: https_proxy
             https_proxy_env_var_name:
               runtimeValue:
                 constant: https_proxy
@@ -2642,12 +2608,6 @@ root:
           based judges)
         isOptional: true
         parameterType: BOOLEAN
-      http_proxy:
-        defaultValue: ''
-        description: URL of the HTTP proxy server used for outbound HTTP requests.
-          An empty string (default) indicates that no HTTP proxy is configured.
-        isOptional: true
-        parameterType: STRING
       https_proxy:
         defaultValue: ''
         description: URL of the HTTPS proxy server used for outbound HTTPS requests.
