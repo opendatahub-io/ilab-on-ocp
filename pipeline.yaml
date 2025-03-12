@@ -2089,7 +2089,7 @@ deploymentSpec:
           \n    with client.ApiClient() as api_client:\n        core_api = client.CoreV1Api(api_client)\n\
           \n        try:\n            secret = core_api.read_namespaced_secret(secret_name,\
           \ namespace)\n            print(f\"Reading secret {secret_name} data...\"\
-          )\n            model_api_key = base64.b64decode(secret.data[\"api_key\"\
+          )\n            model_api_key = base64.b64decode(secret.data[\"api_token\"\
           ]).decode(\"utf-8\")\n            model_name = base64.b64decode(secret.data[\"\
           model_name\"]).decode(\"utf-8\")\n            model_endpoint = base64.b64decode(secret.data[\"\
           endpoint\"]).decode(\"utf-8\")\n        except (ApiException, KeyError)\
@@ -2157,7 +2157,7 @@ deploymentSpec:
           \n    with client.ApiClient() as api_client:\n        core_api = client.CoreV1Api(api_client)\n\
           \n        try:\n            secret = core_api.read_namespaced_secret(secret_name,\
           \ namespace)\n            print(f\"Reading secret {secret_name} data...\"\
-          )\n            model_api_key = base64.b64decode(secret.data[\"api_key\"\
+          )\n            model_api_key = base64.b64decode(secret.data[\"api_token\"\
           ]).decode(\"utf-8\")\n            model_name = base64.b64decode(secret.data[\"\
           model_name\"]).decode(\"utf-8\")\n            model_endpoint = base64.b64decode(secret.data[\"\
           endpoint\"]).decode(\"utf-8\")\n        except (ApiException, KeyError)\
@@ -2222,9 +2222,9 @@ deploymentSpec:
           \        print(f\"\"\"\n        ########################### INFO ##############################\n\
           \        # Model Registry endpoint is not provided. Skipping this step #\n\
           \        ###############################################################\n\
-          \        \"\"\")\n\n    try:\n        # Extract the port out of the URL\
-          \ because the ModelRegistry client expects those as separate arguments.\n\
-          \        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
+          \        \"\"\")\n        return\n\n    try:\n        # Extract the port\
+          \ out of the URL because the ModelRegistry client expects those as separate\
+          \ arguments.\n        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
           \        model_registry_api_url_port = model_registry_api_url_parsed.port\n\
           \n        if model_registry_api_url_port:\n            model_registry_api_server_address\
           \ = model_registry_endpoint.replace(\n                model_registry_api_url_parsed.netloc,\n\
@@ -2530,6 +2530,8 @@ root:
           enableCache: true
         componentRef:
           name: comp-createpvc
+        dependentTasks:
+        - prerequisites-check-op
         inputs:
           parameters:
             access_modes:
@@ -2980,6 +2982,7 @@ root:
         dependentTasks:
         - createpvc
         - importer
+        - prerequisites-check-op
         inputs:
           artifacts:
             tokenizer_model:

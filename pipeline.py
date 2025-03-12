@@ -198,6 +198,7 @@ def ilab_pipeline(
         size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
+    sdg_input_pvc_task.after(prerequisites_check_task)
 
     model_tokenizer_source_task = dsl.importer(
         artifact_uri=f"oci://{RUNTIME_GENERIC_IMAGE}", artifact_class=dsl.Model
@@ -228,6 +229,7 @@ def ilab_pipeline(
         mount_path="/data",
     )
     sdg_task.set_caching_options(False)
+    sdg_task.after(prerequisites_check_task)
 
     # Upload "sdg" and "taxonomy" artifacts to S3 without blocking the rest of the workflow
     taxonomy_to_artifact_task = taxonomy_to_artifact_op()

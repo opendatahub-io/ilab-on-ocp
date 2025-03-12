@@ -337,7 +337,7 @@ def test_model_connection(secret_name: str):
         try:
             secret = core_api.read_namespaced_secret(secret_name, namespace)
             print(f"Reading secret {secret_name} data...")
-            model_api_key = base64.b64decode(secret.data["api_key"]).decode("utf-8")
+            model_api_key = base64.b64decode(secret.data["api_token"]).decode("utf-8")
             model_name = base64.b64decode(secret.data["model_name"]).decode("utf-8")
             model_endpoint = base64.b64decode(secret.data["endpoint"]).decode("utf-8")
         except (ApiException, KeyError) as e:
@@ -398,6 +398,7 @@ def test_model_registry(
         # Model Registry endpoint is not provided. Skipping this step #
         ###############################################################
         """)
+        return
 
     try:
         # Extract the port out of the URL because the ModelRegistry client expects those as separate arguments.
