@@ -1908,19 +1908,21 @@ deploymentSpec:
           \ configured using temporary key at {ssh_key_path}.\"\n            )\n\n\
           \    if not repo_url or not taxonomy_path:\n        raise RuntimeError(\n\
           \            \"Missing either repo_url or taxonomy_path, cannot proceed\
-          \ with cloning.\"\n        )\n\n    # Clone the repository\n    exec_cmd([\"\
-          git\", \"clone\", \"-v\", repo_url, taxonomy_path], env=env)\n    print(\"\
-          Taxonomy repo cloned executed successfully!\")\n    if repo_branch:\n  \
-          \      exec_cmd([\"git\", \"checkout\", repo_branch], cwd=taxonomy_path,\
-          \ env=env)\n    elif repo_pr:\n        # Fetch pull request head\n     \
-          \   exec_cmd(\n            [\"git\", \"fetch\", \"origin\", f\"pull/{repo_pr}/head:pr-{repo_pr}\"\
-          ],\n            cwd=taxonomy_path,\n            env=env,\n        )\n  \
-          \      exec_cmd([\"git\", \"checkout\", repo_branch], cwd=taxonomy_path,\
-          \ env=env)\n\n    if sdg_secret_name is None:\n        api_key = os.getenv(\"\
-          api_key\")\n        endpoint = os.getenv(\"endpoint\")\n    else:\n    \
-          \    print(\"SDG Teacher secret specified, fetching...\")\n        api_key,\
-          \ endpoint = fetch_secret(sdg_secret_name, [\"api_token\", \"endpoint\"\
-          ])\n        print(\"SDG Teacher secret data retrieved.\")\n\n    sdg_ca_cert_path\
+          \ with cloning.\"\n        )\n\n    # Handle retries where the repo is already\
+          \ cloned on the PVC\n    if os.path.exists(taxonomy_path):\n        shutil.rmtree(taxonomy_path)\n\
+          \n    # Clone the repository\n    exec_cmd([\"git\", \"clone\", \"-v\",\
+          \ repo_url, taxonomy_path], env=env)\n    print(\"Taxonomy repo cloned executed\
+          \ successfully!\")\n    if repo_branch:\n        exec_cmd([\"git\", \"checkout\"\
+          , repo_branch], cwd=taxonomy_path, env=env)\n    elif repo_pr:\n       \
+          \ # Fetch pull request head\n        exec_cmd(\n            [\"git\", \"\
+          fetch\", \"origin\", f\"pull/{repo_pr}/head:pr-{repo_pr}\"],\n         \
+          \   cwd=taxonomy_path,\n            env=env,\n        )\n        exec_cmd([\"\
+          git\", \"checkout\", repo_branch], cwd=taxonomy_path, env=env)\n\n    if\
+          \ sdg_secret_name is None:\n        api_key = os.getenv(\"api_key\")\n \
+          \       endpoint = os.getenv(\"endpoint\")\n    else:\n        print(\"\
+          SDG Teacher secret specified, fetching...\")\n        api_key, endpoint\
+          \ = fetch_secret(sdg_secret_name, [\"api_token\", \"endpoint\"])\n     \
+          \   print(\"SDG Teacher secret data retrieved.\")\n\n    sdg_ca_cert_path\
           \ = os.getenv(\"SDG_CA_CERT_PATH\")\n    dsp_ca_cert_path = os.getenv(\"\
           SSL_CERT_FILE\")\n    dsp_ca_cert_dir = os.getenv(\"SSL_CERT_DIR\")\n\n\
           \    dsp_cert_dir_defined = dsp_ca_cert_dir is not None\n    dsp_ca_exists\

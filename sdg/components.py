@@ -273,6 +273,10 @@ def sdg_op(
             "Missing either repo_url or taxonomy_path, cannot proceed with cloning."
         )
 
+    # Handle retries where the repo is already cloned on the PVC
+    if os.path.exists(taxonomy_path):
+        shutil.rmtree(taxonomy_path)
+
     # Clone the repository
     exec_cmd(["git", "clone", "-v", repo_url, taxonomy_path], env=env)
     print("Taxonomy repo cloned executed successfully!")
