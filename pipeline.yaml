@@ -2117,12 +2117,12 @@ deploymentSpec:
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef test_model_connection(secret_name: str):\n    import base64\n\
-          \    import json\n    import os\n    import sys\n    import time\n\n   \
-          \ import requests\n    from kubernetes import client, config\n    from kubernetes.client.rest\
-          \ import ApiException\n\n    config.load_incluster_config()\n\n    model_endpoint\
-          \ = \"\"\n    model_name = \"\"\n    model_api_key = \"\"\n    with open(\n\
-          \        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\", \"\
-          r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
+          \    import json\n    import os\n    import sys\n    import textwrap\n \
+          \   import time\n\n    import requests\n    from kubernetes import client,\
+          \ config\n    from kubernetes.client.rest import ApiException\n\n    config.load_incluster_config()\n\
+          \n    model_endpoint = \"\"\n    model_name = \"\"\n    model_api_key =\
+          \ \"\"\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          , \"r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
           \n    with client.ApiClient() as api_client:\n        core_api = client.CoreV1Api(api_client)\n\
           \n        try:\n            secret = core_api.read_namespaced_secret(secret_name,\
           \ namespace)\n            print(f\"Reading secret {secret_name} data...\"\
@@ -2145,15 +2145,16 @@ deploymentSpec:
           \            data=json.dumps(request_body),\n            verify=os.environ[\"\
           SDG_CA_CERT_PATH\"],\n        )\n        if resp.status_code != 200:\n \
           \           print(f\"Model Server {model_name} is not available. Attempt\
-          \ {i}/3...\")\n            time.sleep(5)\n        else:\n            print(f\"\
-          \"\"\n            ################### INFO #######################\n   \
-          \         # Model Server {model_name} is up and running. #\n           \
-          \ ################################################\n            \"\"\")\n\
-          \            return\n    print(f\"\"\"\n    ############################################\
+          \ {i}/3...\")\n            time.sleep(5)\n        else:\n            print(\n\
+          \                textwrap.dedent(f\"\"\"\\\n            ###################\
+          \ INFO #######################\n            # Model Server {model_name}\
+          \ is up and running. #\n            ################################################\\\
+          \n            \"\"\")\n            )\n            return\n    print(\n \
+          \       textwrap.dedent(f\"\"\"\\\n    ############################################\
           \ ERROR ####################################################\n    # Model\
           \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
-          \ to serve requests. #\n    #######################################################################################################\n\
-          \    \"\"\")\n    sys.exit(1)\n\n"
+          \ to serve requests. #\n    #######################################################################################################\\\
+          \n    \"\"\")\n    )\n    sys.exit(1)\n\n"
         env:
         - name: SDG_CA_CERT_PATH
           value: /tmp/cert/ca.crt
@@ -2185,12 +2186,12 @@ deploymentSpec:
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef test_model_connection(secret_name: str):\n    import base64\n\
-          \    import json\n    import os\n    import sys\n    import time\n\n   \
-          \ import requests\n    from kubernetes import client, config\n    from kubernetes.client.rest\
-          \ import ApiException\n\n    config.load_incluster_config()\n\n    model_endpoint\
-          \ = \"\"\n    model_name = \"\"\n    model_api_key = \"\"\n    with open(\n\
-          \        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\", \"\
-          r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
+          \    import json\n    import os\n    import sys\n    import textwrap\n \
+          \   import time\n\n    import requests\n    from kubernetes import client,\
+          \ config\n    from kubernetes.client.rest import ApiException\n\n    config.load_incluster_config()\n\
+          \n    model_endpoint = \"\"\n    model_name = \"\"\n    model_api_key =\
+          \ \"\"\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          , \"r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
           \n    with client.ApiClient() as api_client:\n        core_api = client.CoreV1Api(api_client)\n\
           \n        try:\n            secret = core_api.read_namespaced_secret(secret_name,\
           \ namespace)\n            print(f\"Reading secret {secret_name} data...\"\
@@ -2213,15 +2214,16 @@ deploymentSpec:
           \            data=json.dumps(request_body),\n            verify=os.environ[\"\
           SDG_CA_CERT_PATH\"],\n        )\n        if resp.status_code != 200:\n \
           \           print(f\"Model Server {model_name} is not available. Attempt\
-          \ {i}/3...\")\n            time.sleep(5)\n        else:\n            print(f\"\
-          \"\"\n            ################### INFO #######################\n   \
-          \         # Model Server {model_name} is up and running. #\n           \
-          \ ################################################\n            \"\"\")\n\
-          \            return\n    print(f\"\"\"\n    ############################################\
+          \ {i}/3...\")\n            time.sleep(5)\n        else:\n            print(\n\
+          \                textwrap.dedent(f\"\"\"\\\n            ###################\
+          \ INFO #######################\n            # Model Server {model_name}\
+          \ is up and running. #\n            ################################################\\\
+          \n            \"\"\")\n            )\n            return\n    print(\n \
+          \       textwrap.dedent(f\"\"\"\\\n    ############################################\
           \ ERROR ####################################################\n    # Model\
           \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
-          \ to serve requests. #\n    #######################################################################################################\n\
-          \    \"\"\")\n    sys.exit(1)\n\n"
+          \ to serve requests. #\n    #######################################################################################################\\\
+          \n    \"\"\")\n    )\n    sys.exit(1)\n\n"
         env:
         - name: SDG_CA_CERT_PATH
           value: /tmp/cert/ca.crt
@@ -2254,14 +2256,15 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef test_model_registry(\n    model_registry_endpoint: Optional[str],\n\
           \    model_name: Optional[str],\n    model_version: Optional[str],\n):\n\
-          \    import sys\n    import urllib\n\n    from model_registry import ModelRegistry\n\
-          \    from model_registry.exceptions import StoreError\n\n    if not model_registry_endpoint:\n\
-          \        print(f\"\"\"\n        ########################### INFO ##############################\n\
+          \    import sys\n    import textwrap\n    import urllib\n\n    from model_registry\
+          \ import ModelRegistry\n    from model_registry.exceptions import StoreError\n\
+          \n    if not model_registry_endpoint:\n        print(\n            textwrap.dedent(f\"\
+          \"\"\\\n        ########################### INFO ##############################\n\
           \        # Model Registry endpoint is not provided. Skipping this step #\n\
-          \        ###############################################################\n\
-          \        \"\"\")\n        return\n\n    try:\n        # Extract the port\
-          \ out of the URL because the ModelRegistry client expects those as separate\
-          \ arguments.\n        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
+          \        ###############################################################\\\
+          \n        \"\"\")\n        )\n        return\n\n    try:\n        # Extract\
+          \ the port out of the URL because the ModelRegistry client expects those\
+          \ as separate arguments.\n        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
           \        model_registry_api_url_port = model_registry_api_url_parsed.port\n\
           \n        if model_registry_api_url_port:\n            model_registry_api_server_address\
           \ = model_registry_endpoint.replace(\n                model_registry_api_url_parsed.netloc,\n\
@@ -2283,13 +2286,14 @@ deploymentSpec:
           \ You cannot overwrite a model version. #\n            ###################################################################################################################\n\
           \            \"\"\")\n            sys.exit(1)\n    except StoreError as\
           \ store:\n        # The model has no versions registered.\n        # Do\
-          \ nothing, just to avoid this exception to return failure\n        print(f\"\
-          \"\"\n        ########### INFO ##############\n        # Model Registry\
-          \ is available #\n        ###############################\n        \"\"\"\
-          )\n        sys.exit(0)\n    except Exception as e:\n        print(f\"\"\"\
-          \n        ############# ERROR ###############\n        # Model Registry\
-          \ is not available #\n        ###################################\n    \
-          \    \"\"\")\n        raise\n\n"
+          \ nothing, just to avoid this exception to return failure\n        print(\n\
+          \            textwrap.dedent(f\"\"\"\\\n        ########### INFO ##############\n\
+          \        # Model Registry is available #\n        ###############################\\\
+          \n        \"\"\")\n        )\n        sys.exit(0)\n    except Exception\
+          \ as e:\n        print(\n            textwrap.dedent(f\"\"\"\\\n       \
+          \ ############# ERROR ###############\n        # Model Registry is not available\
+          \ #\n        ###################################\\\n        \"\"\")\n  \
+          \      )\n        raise\n\n"
         image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
     exec-test-oci-model:
       container:
@@ -2318,16 +2322,16 @@ deploymentSpec:
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef test_oci_model(output_oci_model_uri: str, output_oci_registry_secret:\
-          \ str):\n    import base64\n    import json\n    import sys\n\n    from\
-          \ kubernetes import client, config\n    from kubernetes.client.rest import\
-          \ ApiException\n\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          \ str):\n    import base64\n    import json\n    import sys\n    import\
+          \ textwrap\n\n    from kubernetes import client, config\n    from kubernetes.client.rest\
+          \ import ApiException\n\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
           , \"r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
           \    config.load_incluster_config()\n\n    if output_oci_model_uri is None:\n\
-          \        print(f\"\"\"\n        ############################## INFO ##################################\n\
-          \        # Parameter output_oci_model_uri not provided. Skipping this step...\
-          \ #\n        ######################################################################\n\
-          \        \"\"\")\n        sys.exit(0)\n\n    # Extract from sdg_base_model\
-          \ parameter the registry name\n    registry_name = output_oci_model_uri.replace(\"\
+          \        print(\n            textwrap.dedent(f\"\"\"\\\n        ##############################\
+          \ INFO ##################################\n        # Parameter output_oci_model_uri\
+          \ not provided. Skipping this step... #\n        ######################################################################\\\
+          \n        \"\"\")\n        )\n        sys.exit(0)\n\n    # Extract from\
+          \ sdg_base_model parameter the registry name\n    registry_name = output_oci_model_uri.replace(\"\
           oci://\", \"\").split(\"/\")[0]\n\n    with client.ApiClient() as api_client:\n\
           \        core_api = client.CoreV1Api(api_client)\n        try:\n       \
           \     secret = core_api.read_namespaced_secret(\n                output_oci_registry_secret,\
@@ -2336,26 +2340,28 @@ deploymentSpec:
           :\n                # handle authentication if secret provided is kubernetes.io/dockerconfigjson\n\
           \                docker_config_json = json.loads(\n                    base64.b64decode(secret.data[\"\
           .dockerconfigjson\"]).decode(\"utf-8\")\n                )\n           \
-          \     print(f\"\"\"\n                ############## INFO #################\n\
-          \                # OCI Secret has auth token present #\n               \
-          \ #####################################\n                \"\"\")\n     \
-          \       elif secret.type == \"kubernetes.io/dockercfg\":\n             \
-          \   # handle authentication if secret provided is kubernetes.io/dockercfg\n\
-          \                dockercfg_json = json.loads(\n                    base64.b64decode(secret.data[\"\
-          .dockercfg\"]).decode(\"utf-8\")\n                )\n                print(f\"\
-          \"\"\n                ############## INFO #################\n          \
-          \      # OCI Secret has auth token present #\n                #####################################\n\
-          \                \"\"\")\n        except ApiException as e:\n          \
-          \  print(f\"\"\"\n            ##############################################\
-          \ ERROR #################################################################\n\
+          \     print(\n                    textwrap.dedent(f\"\"\"\\\n          \
+          \      ############## INFO #################\n                # OCI Secret\
+          \ has auth token present #\n                #####################################\\\
+          \n                \"\"\")\n                )\n            elif secret.type\
+          \ == \"kubernetes.io/dockercfg\":\n                # handle authentication\
+          \ if secret provided is kubernetes.io/dockercfg\n                dockercfg_json\
+          \ = json.loads(\n                    base64.b64decode(secret.data[\".dockercfg\"\
+          ]).decode(\"utf-8\")\n                )\n                print(\n      \
+          \              textwrap.dedent(f\"\"\"\\\n                ##############\
+          \ INFO #################\n                # OCI Secret has auth token present\
+          \ #\n                #####################################\\\n         \
+          \       \"\"\")\n                )\n        except ApiException as e:\n\
+          \            print(\n                textwrap.dedent(f\"\"\"\\\n       \
+          \     ################################################# ERROR ###################################################################\n\
           \            # Secret {output_oci_registry_secret} does not exist. Ensure\
           \ you created a secret with this name in namespace {namespace} #\n     \
-          \       ######################################################################################################################\n\
-          \            \"\"\")\n            sys.exit(1)\n        except Exception\
-          \ as e:\n            print(f\"\"\"\n            ################## ERROR\
-          \ ##################\n            # Failed to check oci model and/or secret\
-          \ #\n            ###########################################\n         \
-          \   \"\"\")\n            raise\n\n"
+          \       ###########################################################################################################################\\\
+          \n            \"\"\")\n            )\n            sys.exit(1)\n        except\
+          \ Exception as e:\n            print(\n                textwrap.dedent(f\"\
+          \"\"\\\n            ################## ERROR ##################\n      \
+          \      # Failed to check oci model and/or secret #\n            ###########################################\\\
+          \n            \"\"\")\n            )\n            raise\n\n"
         image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
     exec-test-sdg-params:
       container:
@@ -2442,25 +2448,25 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef test_training_operator():\n    import sys\n\n    from kubernetes\
-          \ import client, config\n    from kubernetes.client.rest import ApiException\n\
-          \n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
+          \ *\n\ndef test_training_operator():\n    import sys\n    import textwrap\n\
+          \n    from kubernetes import client, config\n    from kubernetes.client.rest\
+          \ import ApiException\n\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
           , \"r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
           \    config.load_incluster_config()\n\n    with client.ApiClient() as api_client:\n\
           \        api_instance = client.CustomObjectsApi(api_client)\n\n        group\
           \ = \"kubeflow.org\"\n        version = \"v1\"\n        plural = \"pytorchjobs\"\
           \n\n        try:\n            api_response = api_instance.list_namespaced_custom_object(\n\
           \                group, version, namespace, plural\n            )\n    \
-          \        print(\"\"\"\n            ######################### INFO ###########################\n\
-          \            # Kubeflow Training Operator PyTorchJob CRD is available #\n\
-          \            ##########################################################\n\
-          \            \"\"\")\n        except ApiException as e:\n            print(\"\
-          \"\"\n            #################################################### ERROR\
-          \ ######################################################################\n\
+          \        print(\n                textwrap.dedent(\"\"\"\\\n            #########################\
+          \ INFO ###########################\n            # Kubeflow Training Operator\
+          \ PyTorchJob CRD is available #\n            ##########################################################\\\
+          \n            \"\"\")\n            )\n        except ApiException as e:\n\
+          \            print(\n                textwrap.dedent(\"\"\"\\\n        \
+          \    #################################################### ERROR ######################################################################\n\
           \            # Kubeflow Training Operator PyTorchJob CRD is unavailable.\
           \ Ensure your OpenShift AI installation has Training Operator enabled #\n\
-          \            #################################################################################################################################\n\
-          \            \"\"\")\n            sys.exit(1)\n\n"
+          \            #################################################################################################################################\\\
+          \n            \"\"\")\n            )\n            sys.exit(1)\n\n"
         image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
     exec-upload-model-op:
       container:
