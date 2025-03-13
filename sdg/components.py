@@ -60,6 +60,8 @@ def sdg_op(
     sdg_path: str = "/data/sdg",
     sdg_sampling_size: float = 1.0,
     sdg_secret_name: str = None,
+    sdg_batch_size: int = None,
+    sdg_num_cpus: int = None,
     taxonomy_repo_secret: str = None,
     repo_url: str = None,
 ):
@@ -355,6 +357,8 @@ def sdg_op(
             pipeline=pipeline,
             chunk_word_count=1000,
             server_ctx_size=4096,
+            batch_size=sdg_batch_size,
+            num_cpus=sdg_num_cpus,
         )
     # Tweak precomputed skills data ratio if needed
     else:
@@ -453,6 +457,8 @@ def sdg_op(
                         pipeline=pipeline,
                         chunk_word_count=1000,
                         server_ctx_size=4096,
+                        batch_size=sdg_batch_size,
+                        num_cpus=sdg_num_cpus,
                     )
                 except Exception as e:
                     print(f"Failed to set precomputed skills data ratio: {e}")

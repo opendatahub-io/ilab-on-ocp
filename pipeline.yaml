@@ -20,7 +20,9 @@
 #    output_oci_model_uri: str [Default: '']
 #    output_oci_registry_secret: str
 #    sdg_base_model: str
+#    sdg_batch_size: int [Default: 128.0]
 #    sdg_max_batch_len: int [Default: 5000.0]
+#    sdg_num_workers: int [Default: 2.0]
 #    sdg_pipeline: str [Default: '/usr/share/instructlab/sdg/pipelines/agentic']
 #    sdg_repo_branch: str
 #    sdg_repo_pr: int
@@ -391,6 +393,18 @@ components:
                 componentInputParameter: output_oci_registry_secret
           taskInfo:
             name: test-oci-model
+        test-sdg-params:
+          cachingOptions: {}
+          componentRef:
+            name: comp-test-sdg-params
+          inputs:
+            parameters:
+              sdg_batch_size:
+                componentInputParameter: sdg_batch_size
+              sdg_num_workers:
+                componentInputParameter: sdg_num_workers
+          taskInfo:
+            name: test-sdg-params
         test-taxonomy-repo:
           cachingOptions: {}
           componentRef:
@@ -421,6 +435,10 @@ components:
           parameterType: STRING
         output_oci_registry_secret:
           parameterType: STRING
+        sdg_batch_size:
+          parameterType: NUMBER_INTEGER
+        sdg_num_workers:
+          parameterType: NUMBER_INTEGER
         sdg_repo_url:
           parameterType: STRING
         sdg_teacher_secret:
@@ -696,6 +714,12 @@ components:
         repo_url:
           isOptional: true
           parameterType: STRING
+        sdg_batch_size:
+          isOptional: true
+          parameterType: NUMBER_INTEGER
+        sdg_num_cpus:
+          isOptional: true
+          parameterType: NUMBER_INTEGER
         sdg_path:
           defaultValue: /data/sdg
           isOptional: true
@@ -786,6 +810,14 @@ components:
           parameterType: STRING
         output_oci_registry_secret:
           parameterType: STRING
+  comp-test-sdg-params:
+    executorLabel: exec-test-sdg-params
+    inputDefinitions:
+      parameters:
+        sdg_batch_size:
+          parameterType: NUMBER_INTEGER
+        sdg_num_workers:
+          parameterType: NUMBER_INTEGER
   comp-test-taxonomy-repo:
     executorLabel: exec-test-taxonomy-repo
     inputDefinitions:
@@ -916,7 +948,7 @@ deploymentSpec:
         env:
         - name: XDG_CACHE_HOME
           value: /tmp
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
     exec-deletepvc:
       container:
         image: argostub/deletepvc
@@ -1606,7 +1638,7 @@ deploymentSpec:
           value: /tmp
         - name: JUDGE_CA_CERT_PATH
           value: /tmp/cert/ca.crt
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
         resources:
           accelerator:
             resourceCount: '1'
@@ -1770,7 +1802,7 @@ deploymentSpec:
           value: /tmp
         - name: JUDGE_CA_CERT_PATH
           value: /tmp/cert/ca.crt
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
         resources:
           accelerator:
             resourceCount: '1'
@@ -1798,8 +1830,9 @@ deploymentSpec:
           \ str,\n    tokenizer_model: dsl.Input[dsl.Model],\n    repo_branch: Optional[str],\n\
           \    repo_pr: Optional[int],\n    taxonomy_path: str = \"/data/taxonomy\"\
           ,\n    sdg_path: str = \"/data/sdg\",\n    sdg_sampling_size: float = 1.0,\n\
-          \    sdg_secret_name: str = None,\n    taxonomy_repo_secret: str = None,\n\
-          \    repo_url: str = None,\n):\n    import base64\n    import os\n    import\
+          \    sdg_secret_name: str = None,\n    sdg_batch_size: int = None,\n   \
+          \ sdg_num_cpus: int = None,\n    taxonomy_repo_secret: str = None,\n   \
+          \ repo_url: str = None,\n):\n    import base64\n    import os\n    import\
           \ os.path\n    import re\n    import shutil\n    import subprocess\n   \
           \ import tempfile\n    import urllib.parse\n\n    import instructlab.sdg\n\
           \    import openai\n    import requests\n    import xdg_base_dirs\n    import\
@@ -1950,8 +1983,9 @@ deploymentSpec:
           \            output_dir=sdg_path,\n            taxonomy=taxonomy_path,\n\
           \            taxonomy_base=taxonomy_base,\n            model_name=\"mixtral\"\
           ,\n            pipeline=pipeline,\n            chunk_word_count=1000,\n\
-          \            server_ctx_size=4096,\n        )\n    # Tweak precomputed skills\
-          \ data ratio if needed\n    else:\n        skills_recipe = \"/usr/share/instructlab/sdg/default_data_recipes/skills.yaml\"\
+          \            server_ctx_size=4096,\n            batch_size=sdg_batch_size,\n\
+          \            num_cpus=sdg_num_cpus,\n        )\n    # Tweak precomputed\
+          \ skills data ratio if needed\n    else:\n        skills_recipe = \"/usr/share/instructlab/sdg/default_data_recipes/skills.yaml\"\
           \n\n        def set_precomputed_skills_data_ratio(sampling_size: float,\
           \ skills_recipe: str):\n            if os.path.exists(skills_recipe):\n\
           \                with open(skills_recipe, \"r\", encoding=\"utf-8\") as\
@@ -2015,10 +2049,11 @@ deploymentSpec:
           \                        taxonomy_base=taxonomy_base,\n                \
           \        model_name=\"mixtral\",\n                        pipeline=pipeline,\n\
           \                        chunk_word_count=1000,\n                      \
-          \  server_ctx_size=4096,\n                    )\n                except\
-          \ Exception as e:\n                    print(f\"Failed to set precomputed\
-          \ skills data ratio: {e}\")\n                    raise\n\n    # Cleanup\
-          \ git configurations\n    if git_credentials_path and os.path.exists(git_credentials_path):\n\
+          \  server_ctx_size=4096,\n                        batch_size=sdg_batch_size,\n\
+          \                        num_cpus=sdg_num_cpus,\n                    )\n\
+          \                except Exception as e:\n                    print(f\"Failed\
+          \ to set precomputed skills data ratio: {e}\")\n                    raise\n\
+          \n    # Cleanup git configurations\n    if git_credentials_path and os.path.exists(git_credentials_path):\n\
           \        os.remove(git_credentials_path)\n        print(f\"{git_credentials_path}\
           \ deleted successfully\")\n    if ssh_key_path and os.path.exists(ssh_key_path):\n\
           \        os.remove(ssh_key_path)\n        print(f\"{ssh_key_path} deleted\
@@ -2030,7 +2065,7 @@ deploymentSpec:
           value: /tmp
         - name: SDG_CA_CERT_PATH
           value: /tmp/cert/ca.crt
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
     exec-sdg-to-artifact-op:
       container:
         args:
@@ -2321,6 +2356,46 @@ deploymentSpec:
           \ ##################\n            # Failed to check oci model and/or secret\
           \ #\n            ###########################################\n         \
           \   \"\"\")\n            raise\n\n"
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
+    exec-test-sdg-params:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - test_sdg_params
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.12.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef test_sdg_params(sdg_batch_size: int, sdg_num_workers: int):\n\
+          \    import sys\n    import textwrap\n\n    if (\n        sdg_batch_size\
+          \ < 1\n        or sdg_batch_size > 4096\n        or sdg_num_workers < 2\n\
+          \        or sdg_num_workers > 10\n    ):\n        print(\n            textwrap.dedent(\n\
+          \                f\"\"\"\\\n                ##############################################\
+          \ ERROR ##############################################\n               \
+          \ # sdg_batch_size must be a value between 1-4096 and sdg_num_workers must\
+          \ be a value between 1-10  #\n                ###################################################################################################\\\
+          \n                \"\"\"\n            )\n        )\n        sys.exit(1)\n\
+          \n    print(\n        textwrap.dedent(\n            f\"\"\"\\\n        \
+          \    ############# INFO #############\n            # The SDG parameters\
+          \ seem okay #\n            ################################\\\n        \
+          \    \"\"\"\n        )\n    )\n\n"
         image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:10fe95cd2e6b85c865249d26e99571fc9a9897a75070c02fa5dcfdb3252d3eb2
     exec-test-taxonomy-repo:
       container:
@@ -2739,6 +2814,10 @@ root:
               componentInputParameter: output_oci_model_uri
             output_oci_registry_secret:
               componentInputParameter: output_oci_registry_secret
+            sdg_batch_size:
+              componentInputParameter: sdg_batch_size
+            sdg_num_workers:
+              componentInputParameter: sdg_num_workers
             sdg_repo_url:
               componentInputParameter: sdg_repo_url
             sdg_teacher_secret:
@@ -2801,7 +2880,7 @@ root:
           parameters:
             base_image:
               runtimeValue:
-                constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+                constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
             cpu_per_worker:
               componentInputParameter: train_cpu_per_worker
             effective_batch_size:
@@ -2864,7 +2943,7 @@ root:
           parameters:
             base_image:
               runtimeValue:
-                constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+                constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
             cpu_per_worker:
               componentInputParameter: train_cpu_per_worker
             effective_batch_size:
@@ -3002,6 +3081,10 @@ root:
               componentInputParameter: sdg_repo_pr
             repo_url:
               componentInputParameter: sdg_repo_url
+            sdg_batch_size:
+              componentInputParameter: sdg_batch_size
+            sdg_num_cpus:
+              componentInputParameter: sdg_num_workers
             sdg_sampling_size:
               componentInputParameter: sdg_sample_size
             sdg_secret_name:
@@ -3182,10 +3265,24 @@ root:
           This can be a model from OCI such as "oci://registry.redhat.io/rhelai1/modelcar-granite-8b-code-instruct:latest"
           or "s3://<BUCKET>/<PATH_TO_MODEL>".
         parameterType: STRING
+      sdg_batch_size:
+        defaultValue: 128.0
+        description: SDG parameter. The number of completions to per request to the
+          teacher model. This can be increased to improve SDG performance based on
+          the hardware of the teacher model.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
       sdg_max_batch_len:
         defaultValue: 5000.0
         description: SDG parameter. Maximum tokens per gpu for each batch that will
           be handled in a single step.
+        isOptional: true
+        parameterType: NUMBER_INTEGER
+      sdg_num_workers:
+        defaultValue: 2.0
+        description: SDG parameter. The number of concurrent workers sending completion
+          requests. This can be increased to improve SDG performance based on the
+          hardware of the teacher model.
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_pipeline:

@@ -38,7 +38,7 @@ deploymentSpec:
           value: /tmp
         - name: XDG_DATA_HOME
           value: /tmp
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:05cfba1fb13ed54b1de4d021da2a31dd78ba7d8cc48e10c7fe372815899a18ae
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
 pipelineInfo:
   description: Helper pipeline to the InstructLab pipeline which allows users to seed/import
     a new base model

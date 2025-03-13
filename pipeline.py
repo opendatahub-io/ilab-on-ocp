@@ -90,6 +90,8 @@ def ilab_pipeline(
     sdg_pipeline: str = "/usr/share/instructlab/sdg/pipelines/agentic",  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L122
     sdg_max_batch_len: int = 5000,  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L334
     sdg_sample_size: float = 1.0,  # FIXME: Not present in default config. Not configurable upstream at this point, capability added via https://github.com/instructlab/sdg/pull/432
+    sdg_batch_size: int = 128,
+    sdg_num_workers: int = 2,
     # Training phase
     train_tolerations: Optional[list] = None,
     train_node_selectors: Optional[dict] = None,
@@ -145,6 +147,8 @@ def ilab_pipeline(
         sdg_pipeline: SDG parameter. Data generation pipeline to use. Available: 'simple', 'full', or a valid path to a directory of pipeline workflow YAML files. Note that 'full' requires a larger teacher model, Mixtral-8x7b.
         sdg_max_batch_len: SDG parameter. Maximum tokens per gpu for each batch that will be handled in a single step.
         sdg_sample_size: SDG parameter. Represents the sdg skills recipe sampling size as percentage in decimal form.
+        sdg_batch_size: SDG parameter. The number of completions to per request to the teacher model. This can be increased to improve SDG performance based on the hardware of the teacher model.
+        sdg_num_workers: SDG parameter. The number of concurrent workers sending completion requests. This can be increased to improve SDG performance based on the hardware of the teacher model.
 
         train_tolerations: Training parameter. List of tolerations applied to training pods.
         train_node_selectors: Training parameter. A JSON containing node selectors applied to training pods.
@@ -185,6 +189,8 @@ def ilab_pipeline(
         output_oci_registry_secret=output_oci_registry_secret,
         eval_judge_secret=eval_judge_secret,
         sdg_teacher_secret=sdg_teacher_secret,
+        sdg_batch_size=sdg_batch_size,
+        sdg_num_workers=sdg_num_workers,
         output_oci_model_uri=output_oci_model_uri,
         output_model_registry_api_url=output_model_registry_api_url,
         output_model_name=output_model_name,
@@ -212,6 +218,8 @@ def ilab_pipeline(
         repo_pr=sdg_repo_pr,
         sdg_sampling_size=sdg_sample_size,
         sdg_secret_name=sdg_teacher_secret,
+        sdg_batch_size=sdg_batch_size,
+        sdg_num_cpus=sdg_num_workers,
         repo_url=sdg_repo_url,
         taxonomy_repo_secret=sdg_repo_secret,
         tokenizer_model=model_tokenizer_source_task.output,

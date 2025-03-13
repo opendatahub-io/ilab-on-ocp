@@ -3,7 +3,9 @@ import os
 DEFAULT_PYTHON_IMAGE = "quay.io/modh/odh-generic-data-science-notebook:v3-20250117"
 DEFAULT_TOOLBOX_IMAGE = "registry.redhat.io/ubi9/toolbox:9.5"
 DEFAULT_OC_IMAGE = "registry.redhat.io/openshift4/ose-cli:v4.15.0"
-DEFAULT_RHELAI_IMAGE = "registry.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.3.2"
+DEFAULT_RHELAI_IMAGE = (
+    "registry.redhat.io/rhelai1/instructlab-nvidia-rhel9:1.4.1-1739870750"
+)
 DEFAULT_RUNTIME_GENERIC_IMAGE = (
     "quay.io/opendatahub/ds-pipelines-runtime-generic:latest"
 )
