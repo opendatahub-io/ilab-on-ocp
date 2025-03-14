@@ -26,6 +26,8 @@ from training import (
     skills_processed_data_to_artifact_op,
 )
 from utils import (
+    extract_sdg_to_pvc_op,
+    get_pvc_name_op,
     ilab_importer_op,
     model_to_pvc_op,
     pvc_to_mmlu_branch_op,
@@ -73,6 +75,7 @@ def ilab_pipeline(
     sdg_sample_size: float = 1.0,  # FIXME: Not present in default config. Not configurable upstream at this point, capability added via https://github.com/instructlab/sdg/pull/432
     sdg_batch_size: int = 32,
     sdg_num_workers: int = 2,
+    sdg_pregenerated_uri: str = "",
     # Training phase
     train_tolerations: Optional[list] = None,
     train_node_selectors: Optional[dict] = None,
@@ -130,6 +133,7 @@ def ilab_pipeline(
         sdg_sample_size: SDG parameter. Represents the sdg skills recipe sampling size as percentage in decimal form.
         sdg_batch_size: SDG parameter. The number of completions per request to the teacher model. Must be a value between 1-4096. This can be increased to improve SDG performance based on the hardware of the teacher model or reduced if SDG fails due to connection errors with the teacher model.
         sdg_num_workers: SDG parameter. The number of concurrent workers sending completion requests to the teacher model. Must be a value between 2-10. This can be increased to improve SDG performance based on the hardware of the teacher model or reduced if SDG fails due to connection errors with the teacher model.
+        sdg_pregenerated_uri: SDG parameter. If specified, the SDG phase is skipped and the URI is used to download the SDG output.
 
         train_tolerations: Training parameter. List of tolerations applied to training pods.
         train_node_selectors: Training parameter. A JSON containing node selectors applied to training pods.
@@ -176,6 +180,8 @@ def ilab_pipeline(
         output_model_registry_api_url=output_model_registry_api_url,
         output_model_name=output_model_name,
         output_model_version=output_model_version,
+        # Must use a default of empty string for `dsl.If` to work.
+        sdg_pregenerated_uri=sdg_pregenerated_uri,
     )
 
     # SDG stage
@@ -187,50 +193,67 @@ def ilab_pipeline(
     )
     sdg_input_pvc_task.after(prerequisites_check_task)
 
-    model_tokenizer_source_task = dsl.importer(
-        artifact_uri=f"oci://{RUNTIME_GENERIC_IMAGE}", artifact_class=dsl.Model
-    )
-    model_tokenizer_source_task.after(prerequisites_check_task)
-
-    sdg_task = sdg_op(
-        num_instructions_to_generate=sdg_scale_factor,
-        pipeline=sdg_pipeline,
-        repo_branch=sdg_repo_branch,
-        repo_pr=sdg_repo_pr,
-        sdg_sampling_size=sdg_sample_size,
-        sdg_secret_name=sdg_teacher_secret,
-        sdg_batch_size=sdg_batch_size,
-        sdg_num_cpus=sdg_num_workers,
-        repo_url=sdg_repo_url,
-        taxonomy_repo_secret=sdg_repo_secret,
-        tokenizer_model=model_tokenizer_source_task.output,
-    )
-    sdg_task.set_env_variable("HOME", "/tmp")
-    sdg_task.set_env_variable("HF_HOME", "/tmp")
-
-    mount_pvc(
-        task=sdg_task,
-        pvc_name=sdg_input_pvc_task.output,
-        mount_path="/data",
-    )
-    sdg_task.set_caching_options(False)
-    sdg_task.after(prerequisites_check_task)
-
-    # Upload "sdg" and "taxonomy" artifacts to S3 without blocking the rest of the workflow
-    taxonomy_to_artifact_task = taxonomy_to_artifact_op()
-    taxonomy_to_artifact_task.after(sdg_task)
-    mount_pvc(
-        task=taxonomy_to_artifact_task,
-        pvc_name=sdg_input_pvc_task.output,
-        mount_path="/data",
-    )
-    sdg_to_artifact_task = sdg_to_artifact_op()
-    sdg_to_artifact_task.after(sdg_task)
-    mount_pvc(
-        task=sdg_to_artifact_task,
-        pvc_name=sdg_input_pvc_task.output,
-        mount_path="/data",
-    )
+    with dsl.If(sdg_pregenerated_uri == "", "run-sdg"):
+        model_tokenizer_source_task = dsl.importer(
+            artifact_uri=f"oci://{RUNTIME_GENERIC_IMAGE}", artifact_class=dsl.Model
+        )
+        model_tokenizer_source_task.after(prerequisites_check_task)
+        get_pvc_name_task = get_pvc_name_op(pvc_name=sdg_input_pvc_task.output)
+        get_pvc_name_task.after(model_tokenizer_source_task)
+        sdg_task = sdg_op(
+            num_instructions_to_generate=sdg_scale_factor,
+            pipeline=sdg_pipeline,
+            repo_branch=sdg_repo_branch,
+            repo_pr=sdg_repo_pr,
+            sdg_sampling_size=sdg_sample_size,
+            sdg_secret_name=sdg_teacher_secret,
+            sdg_batch_size=sdg_batch_size,
+            sdg_num_cpus=sdg_num_workers,
+            repo_url=sdg_repo_url,
+            taxonomy_repo_secret=sdg_repo_secret,
+            tokenizer_model=model_tokenizer_source_task.output,
+        )
+        sdg_task.set_caching_options(False)
+        sdg_task.after(prerequisites_check_task)
+        sdg_task.set_env_variable("HOME", "/tmp")
+        sdg_task.set_env_variable("HF_HOME", "/tmp")
+        mount_pvc(
+            task=sdg_task,
+            pvc_name=get_pvc_name_task.output,
+            mount_path="/data",
+        )
+        # Upload "sdg" and "taxonomy" artifacts to S3 without blocking the rest of the workflow
+        taxonomy_to_artifact_task = taxonomy_to_artifact_op()
+        taxonomy_to_artifact_task.after(sdg_task)
+        mount_pvc(
+            task=taxonomy_to_artifact_task,
+            pvc_name=get_pvc_name_task.output,
+            mount_path="/data",
+        )
+        sdg_to_artifact_task = sdg_to_artifact_op()
+        sdg_to_artifact_task.after(sdg_task)
+        mount_pvc(
+            task=sdg_to_artifact_task,
+            pvc_name=get_pvc_name_task.output,
+            mount_path="/data",
+        )
+    with dsl.Else("preload-sdg"):
+        sdg_source_s3_task = dsl.importer(
+            artifact_uri=sdg_pregenerated_uri,
+            artifact_class=dsl.Dataset,
+            reimport=True,
+        )
+        sdg_source_s3_task.set_caching_options(False)
+        get_pvc_name_task = get_pvc_name_op(pvc_name=sdg_input_pvc_task.output)
+        get_pvc_name_task.after(sdg_source_s3_task)
+        sdg_task = extract_sdg_to_pvc_op(sdg=sdg_source_s3_task.output)
+        sdg_task.after(sdg_source_s3_task)
+        sdg_task.after(prerequisites_check_task)
+        mount_pvc(
+            task=sdg_task,
+            pvc_name=get_pvc_name_task.output,
+            mount_path="/data",
+        )
 
     # uncomment if updating image with same tag
     # set_image_pull_policy(sdg_task, "Always")
