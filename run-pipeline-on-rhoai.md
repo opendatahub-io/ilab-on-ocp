@@ -540,7 +540,7 @@ For deploying an in-cluster NFS server, apply [nfs-server-deployment.yaml] file
 
 ```bash
 oc new-project nfs
-oc apply -f ./standalone/nfs-server-deployment.yaml
+oc apply -f ./sample-manifests/nfs-server-deployment.yaml
 ```
 
 > [!NOTE]
@@ -548,10 +548,10 @@ oc apply -f ./standalone/nfs-server-deployment.yaml
 
 For creating NFS storage-class, apply [nfs-storage-class.yaml] file
 ```bash
-oc apply -f ./standalone/nfs-storage-class.yaml
+oc apply -f ./sample-manifests/nfs-storage-class.yaml
 ```
-[nfs-storage-class.yaml]:/standalone/nfs-storage-class.yaml
-[nfs-server-deployment.yaml]:/standalone/nfs-server-deployment.yaml
+[nfs-storage-class.yaml]:/sample-manifests/nfs-storage-class.yaml
+[nfs-server-deployment.yaml]:/sample-manifests/nfs-server-deployment.yaml
 
 ### Accelerator Profile:
 An accelerator profile must also be defined within the RHOAI dashboard or via CLI to enable GPU acceleration for model serving with Kserve Serving.
@@ -774,5 +774,3 @@ Using these parameters will allow a user to run the complete pipeline much quick
 Additionally, we can point the `judge-server` and `teacher-server` to the same Mistral model, which only uses 1 GPU, and the PyTorchJob configuration
 specified here also only uses 2 training nodes of 1 GPU, so a total of 3 GPUs are required, rather than the 8-9 GPUs required for the full pipeline.
 With that said, the output model quality is likely very poor, and these should only be used for testing purposes.
-
-[RBAC configuration]: https://github.com/opendatahub-io/ilab-on-ocp/tree/main/standalone#rbac-requirements-when-running-in-a-kubernetes-job

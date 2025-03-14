@@ -137,11 +137,6 @@ def run_final_eval_op(
         # short delay (typically ~ 10 seconds, max 30) to verify stability.
         wait_for_stable_vram(30)
 
-    # For standalone mode
-    if candidate_model is None:
-        # logic to get the best model from the models folder and results
-        pass
-
     ######################################################################
     # branch_eval_summary_to_json creates a json object from output of instructlab/eval
     # TODO: Add this to the instructlab/eval or instructlab/instructlab repository

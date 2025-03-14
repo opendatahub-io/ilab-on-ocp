@@ -1423,9 +1423,7 @@ deploymentSpec:
           \        # vLLM relies on stable VRAM,  residual reclamation activity\n\
           \        # can lead to crashes on restart. To prevent this add a\n     \
           \   # short delay (typically ~ 10 seconds, max 30) to verify stability.\n\
-          \        wait_for_stable_vram(30)\n\n    # For standalone mode\n    if candidate_model\
-          \ is None:\n        # logic to get the best model from the models folder\
-          \ and results\n        pass\n\n    ######################################################################\n\
+          \        wait_for_stable_vram(30)\n\n    ######################################################################\n\
           \    # branch_eval_summary_to_json creates a json object from output of\
           \ instructlab/eval\n    # TODO: Add this to the instructlab/eval or instructlab/instructlab\
           \ repository\n    def branch_eval_summary_to_json(\n        improvements:\

@@ -190,16 +190,6 @@ The pipeline yaml is defined by `pipeline.py` file and then converted into an in
 make pipeline
 ```
 
-## Standalone Deployment
-
-See [standalone](standalone/README.md) for instructions on deploying the Instructlab solution
-without the need for RHOAI.
-To generate the `standalone.py` script, run the following command ([ruff](https://docs.astral.sh/ruff/installation/) tool must be installed):
-
-```bash
-make standalone
-```
-
 ## Developer setup
 
 To collaborate on this repository, please follow these steps:
