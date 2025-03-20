@@ -43,6 +43,10 @@ PIPELINE_FILE_NAME = "pipeline.yaml"
 IMPORTER_PIPELINE_FILE_NAME = "importer-pipeline.yaml"
 DEFAULT_REPO_URL = "https://github.com/instructlab/taxonomy.git"
 
+HTTP_PROXY_ENV_VAR_NAME = "http_proxy"
+HTTPS_PROXY_ENV_VAR_NAME = "https_proxy"
+NO_PROXY_ENV_VAR_NAME = "no_proxy"
+
 
 @dsl.pipeline(
     display_name="InstructLab",
@@ -106,6 +110,9 @@ def ilab_pipeline(
     # Other options
     k8s_storage_class_name: str = "standard",  # FIXME: https://github.com/kubeflow/pipelines/issues/11396, https://issues.redhat.com/browse/RHOAIRFE-470
     k8s_storage_size: str = "100Gi",
+    http_proxy: str = "",
+    https_proxy: str = "",
+    no_proxy: str = "localhost,127.0.0.1,svc.cluster.local,kubernetes.default.svc,0,1,2,3,4,5,6,7,8,9",
 ):
     """InstructLab pipeline
 
@@ -163,6 +170,9 @@ def ilab_pipeline(
 
         k8s_storage_class_name: A Kubernetes StorageClass name for persistent volumes. Selected StorageClass must support RWX PersistentVolumes.
         k8s_storage_size: The storage size of the persistent volume used for data passing within the pipeline.
+        http_proxy: URL of the HTTP proxy server used for outbound HTTP requests. An empty string (default) indicates that no HTTP proxy is configured.
+        https_proxy: URL of the HTTPS proxy server used for outbound HTTPS requests. An empty string (default) indicates that no HTTPS proxy is configured.
+        no_proxy: A comma-separated list of hostnames, IP addresses, or domains that should bypass the proxy. The default value "localhost,127.0.0.1,svc.cluster.local,kubernetes.default.svc,0,1,2,3,4,5,6,7,8,9" ensures that local addresses and the internal cluster domain do not route through the proxy.
     """
     # Pre-requisites check stage
     prerequisites_check_task = prerequisites_check_op(
@@ -176,6 +186,12 @@ def ilab_pipeline(
         output_model_registry_api_url=output_model_registry_api_url,
         output_model_name=output_model_name,
         output_model_version=output_model_version,
+        http_proxy_env_var_name=HTTP_PROXY_ENV_VAR_NAME,
+        http_proxy_env_var_value=http_proxy,
+        https_proxy_env_var_name=HTTPS_PROXY_ENV_VAR_NAME,
+        https_proxy_env_var_value=https_proxy,
+        no_proxy_env_var_name=NO_PROXY_ENV_VAR_NAME,
+        no_proxy_env_var_value=no_proxy,
     )
 
     # SDG stage
@@ -204,6 +220,12 @@ def ilab_pipeline(
         repo_url=sdg_repo_url,
         taxonomy_repo_secret=sdg_repo_secret,
         tokenizer_model=model_tokenizer_source_task.output,
+        http_proxy_env_var_name=HTTP_PROXY_ENV_VAR_NAME,
+        http_proxy_env_var_value=http_proxy,
+        https_proxy_env_var_name=HTTPS_PROXY_ENV_VAR_NAME,
+        https_proxy_env_var_value=https_proxy,
+        no_proxy_env_var_name=NO_PROXY_ENV_VAR_NAME,
+        no_proxy_env_var_value=no_proxy,
     )
     sdg_task.set_env_variable("HOME", "/tmp")
     sdg_task.set_env_variable("HF_HOME", "/tmp")
@@ -367,6 +389,12 @@ def ilab_pipeline(
         max_workers=mt_bench_max_workers,
         merge_system_user_message=mt_bench_merge_system_user_message,
         judge_secret_name=eval_judge_secret,
+        http_proxy_env_var_name=HTTP_PROXY_ENV_VAR_NAME,
+        http_proxy_env_var_value=http_proxy,
+        https_proxy_env_var_name=HTTPS_PROXY_ENV_VAR_NAME,
+        https_proxy_env_var_value=https_proxy,
+        no_proxy_env_var_name=NO_PROXY_ENV_VAR_NAME,
+        no_proxy_env_var_value=no_proxy,
     )
     mount_pvc(
         task=run_mt_bench_task,
@@ -394,6 +422,12 @@ def ilab_pipeline(
         few_shots=final_eval_few_shots,
         batch_size=final_eval_batch_size,
         judge_secret_name=eval_judge_secret,
+        http_proxy_env_var_name=HTTP_PROXY_ENV_VAR_NAME,
+        http_proxy_env_var_value=http_proxy,
+        https_proxy_env_var_name=HTTPS_PROXY_ENV_VAR_NAME,
+        https_proxy_env_var_value=https_proxy,
+        no_proxy_env_var_name=NO_PROXY_ENV_VAR_NAME,
+        no_proxy_env_var_value=no_proxy,
     )
     mount_pvc(
         task=final_eval_task, pvc_name=output_pvc_task.output, mount_path="/output"
