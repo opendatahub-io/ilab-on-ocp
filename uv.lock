@@ -457,7 +457,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.7" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jinja2", specifier = ">=3.1.4" },
-    { name = "kfp", specifier = "==2.12.1" },
+    { name = "kfp", git = "https://github.com/kubeflow/pipelines?subdirectory=sdk%2Fpython&rev=26946059963051cce5a8a70270ebc6bc9f7e2bd6" },
     { name = "kfp-kubernetes", specifier = ">=1.4.0" },
     { name = "kubeflow-training", specifier = "==1.8.1" },
     { name = "kubernetes", specifier = "==30.1.0" },
@@ -482,7 +482,7 @@ wheels = [
 [[package]]
 name = "kfp"
 version = "2.12.1"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/kubeflow/pipelines?subdirectory=sdk%2Fpython&rev=26946059963051cce5a8a70270ebc6bc9f7e2bd6#26946059963051cce5a8a70270ebc6bc9f7e2bd6" }
 dependencies = [
     { name = "click" },
     { name = "docstring-parser" },
@@ -498,7 +498,6 @@ dependencies = [
     { name = "tabulate" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0f/12/73f332e84860ab601d331674e691570d4bf1c88eebb5602c140048ce507a/kfp-2.12.1.tar.gz", hash = "sha256:702e2fa62ef529e426b874666a2b3292edaaa9962da0f44defa3f1077c77efed", size = 345433 }
 
 [[package]]
 name = "kfp-kubernetes"

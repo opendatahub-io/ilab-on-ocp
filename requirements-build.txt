@@ -76,7 +76,7 @@ setuptools-rust==1.11.0
     # via maturin
 setuptools-scm==7.1.0
     # via python-dateutil
-setuptools-scm==8.2.0
+setuptools-scm==8.2.1
     # via
     #   anyio
     #   charset-normalizer
@@ -88,7 +88,7 @@ setuptools-scm==8.2.0
     #   setuptools-rust
     #   sniffio
     #   tabulate
-trove-classifiers==2025.3.13.13
+trove-classifiers==2025.3.19.19
     # via hatchling
 types-psutil==7.0.0.20250218
     # via mypy
@@ -112,7 +112,7 @@ wheel==0.45.1
     #   tabulate
 
 # The following packages are considered to be unsafe in a requirements file:
-setuptools==76.1.0
+setuptools==77.0.3
     # via
     #   aiohttp
     #   aiosignal
