@@ -159,8 +159,8 @@ def sdg_op(
 
     tokenizer_model_path = tokenizer_model.path
     if tokenizer_model_path.startswith("oci://"):
-        # Handle where the KFP SDK is <2.12.0.
-        escaped_uri = tokenizer_model_path[len("oci://") :].replace("/", "\\/")
+        # Handle where the KFP SDK is <2.12.2.
+        escaped_uri = tokenizer_model_path[len("oci://") :].replace("/", "_")
         tokenizer_model_path = os.path.join("/oci", escaped_uri, "models")
 
     # A hack because InstructLab assumes the value for model_name is a valid path and the name of the model.

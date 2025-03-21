@@ -994,7 +994,7 @@ deploymentSpec:
     exec-importer:
       importer:
         artifactUri:
-          constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+          constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
         typeSchema:
           schemaTitle: system.Model
           schemaVersion: 0.0.1
@@ -1040,7 +1040,7 @@ deploymentSpec:
           \ f)\n        print(f\"Copying {src} to {dest}\")\n        if os.path.isdir(src):\n\
           \            shutil.copytree(src, dest)\n        else:\n            shutil.copy(src,\
           \ dest)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-pvc-to-mmlu-branch-op:
       container:
         args:
@@ -1854,9 +1854,9 @@ deploymentSpec:
           \      return match.group(1)  # Extracted host\n        raise ValueError(f\"\
           Invalid SSH repository URL: {repo_url}\")\n\n    tokenizer_model_path =\
           \ tokenizer_model.path\n    if tokenizer_model_path.startswith(\"oci://\"\
-          ):\n        # Handle where the KFP SDK is <2.12.0.\n        escaped_uri\
-          \ = tokenizer_model_path[len(\"oci://\") :].replace(\"/\", \"\\\\/\")\n\
-          \        tokenizer_model_path = os.path.join(\"/oci\", escaped_uri, \"models\"\
+          ):\n        # Handle where the KFP SDK is <2.12.2.\n        escaped_uri\
+          \ = tokenizer_model_path[len(\"oci://\") :].replace(\"/\", \"_\")\n    \
+          \    tokenizer_model_path = os.path.join(\"/oci\", escaped_uri, \"models\"\
           )\n\n    # A hack because InstructLab assumes the value for model_name is\
           \ a valid path and the name of the model.\n    os.symlink(tokenizer_model_path,\
           \ os.path.join(tempfile.gettempdir(), \"mixtral\"))\n    os.chdir(tempfile.gettempdir())\n\
@@ -2115,7 +2115,7 @@ deploymentSpec:
           \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
           \ to serve requests. #\n    #######################################################################################################\\\
           \n    \"\"\")\n    )\n    sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-test-model-connection-2:
       container:
         args:
@@ -2175,7 +2175,7 @@ deploymentSpec:
           \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
           \ to serve requests. #\n    #######################################################################################################\\\
           \n    \"\"\")\n    )\n    sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-test-model-registry:
       container:
         args:
@@ -2235,7 +2235,7 @@ deploymentSpec:
           \ ############# ERROR ###############\n        # Model Registry is not available\
           \ #\n        ###################################\\\n        \"\"\")\n  \
           \      )\n        raise\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-test-oci-model:
       container:
         args:
@@ -2296,7 +2296,7 @@ deploymentSpec:
           \"\"\\\n            ################## ERROR ##################\n      \
           \      # Failed to check oci model and/or secret #\n            ###########################################\\\
           \n            \"\"\")\n            )\n            raise\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-test-sdg-params:
       container:
         args:
@@ -2329,7 +2329,7 @@ deploymentSpec:
           \    ############# INFO #############\n            # The SDG parameters\
           \ seem okay #\n            ################################\\\n        \
           \    \"\"\"\n        )\n    )\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-test-taxonomy-repo:
       container:
         args:
@@ -2346,7 +2346,7 @@ deploymentSpec:
         command:
         - /bin/sh
         - -c
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-test-training-operator:
       container:
         args:
@@ -2385,7 +2385,7 @@ deploymentSpec:
           \ Ensure your OpenShift AI installation has Training Operator enabled #\n\
           \            #################################################################################################################################\\\
           \n            \"\"\")\n            )\n            sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-upload-model-op:
       container:
         args:
@@ -2518,7 +2518,7 @@ deploymentSpec:
           modelVersionName\"] = output_model_version\n    model.metadata[\"modelVersionId\"\
           ] = model_version_id\n    model.metadata[\"registeredModelId\"] = registered_model.id\n\
           \n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
 pipelineInfo:
   description: InstructLab pipeline
   displayName: InstructLab
@@ -2679,7 +2679,7 @@ root:
           parameters:
             uri:
               runtimeValue:
-                constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:b53a607cd4efa86a594da68586613e916ed4b7c626e8a7e793d75e0bd15e815a
+                constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
         taskInfo:
           name: importer
       importer-2:
