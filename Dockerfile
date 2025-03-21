@@ -9,8 +9,13 @@ COPY ${SOURCE_CODE} .
 
 USER root
 
+# Remove the sed after using a released KFP SDK. This is a workaround since pip install requires everything have
+# hashes if provided and git sources cannot have a hash.
+# See: https://github.com/pypa/pip/issues/6469
 RUN echo "Installing Runtime Dependencies" && \
     dnf install -y skopeo && dnf clean all && \
+    sed -i 's/kfp @.*//g' requirements.txt && \
+    pip install --no-deps 'kfp @ git+https://github.com/kubeflow/pipelines@26946059963051cce5a8a70270ebc6bc9f7e2bd6#egg=kfp&subdirectory=sdk/python' && \
     pip install --no-cache-dir -r requirements.txt && \
     chgrp -R 0 . && \
     chmod -R g=u . && \
