@@ -457,7 +457,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.7" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jinja2", specifier = ">=3.1.4" },
-    { name = "kfp", git = "https://github.com/kubeflow/pipelines?subdirectory=sdk%2Fpython&rev=26946059963051cce5a8a70270ebc6bc9f7e2bd6" },
+    { name = "kfp", url = "https://github.com/kubeflow/pipelines/archive/26946059963051cce5a8a70270ebc6bc9f7e2bd6.tar.gz", subdirectory = "sdk/python" },
     { name = "kfp-kubernetes", specifier = ">=1.4.0" },
     { name = "kubeflow-training", specifier = "==1.8.1" },
     { name = "kubernetes", specifier = "==30.1.0" },
@@ -482,7 +482,7 @@ wheels = [
 [[package]]
 name = "kfp"
 version = "2.12.1"
-source = { git = "https://github.com/kubeflow/pipelines?subdirectory=sdk%2Fpython&rev=26946059963051cce5a8a70270ebc6bc9f7e2bd6#26946059963051cce5a8a70270ebc6bc9f7e2bd6" }
+source = { url = "https://github.com/kubeflow/pipelines/archive/26946059963051cce5a8a70270ebc6bc9f7e2bd6.tar.gz", subdirectory = "sdk/python" }
 dependencies = [
     { name = "click" },
     { name = "docstring-parser" },
@@ -498,6 +498,29 @@ dependencies = [
     { name = "tabulate" },
     { name = "urllib3" },
 ]
+sdist = { hash = "sha256:6ee411a519cb9d2efca4a486e5a1ee01ab4c621ef888b554e422d83a82d7e4bb" }
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.0.0,<9" },
+    { name = "docker", marker = "extra == 'all'" },
+    { name = "docstring-parser", specifier = ">=0.7.3,<1" },
+    { name = "google-api-core", specifier = ">=1.31.5,!=2.0.*,!=2.1.*,!=2.2.*,!=2.3.0,<3.0.0.dev0" },
+    { name = "google-auth", specifier = ">=1.6.1,<3" },
+    { name = "google-cloud-storage", specifier = ">=2.2.1,<3" },
+    { name = "kfp-kubernetes", marker = "extra == 'all'", specifier = "<2" },
+    { name = "kfp-kubernetes", marker = "extra == 'kubernetes'", specifier = "<2" },
+    { name = "kfp-pipeline-spec", specifier = "==0.6.0" },
+    { name = "kfp-server-api", specifier = ">=2.1.0,<2.5.0" },
+    { name = "kubernetes", specifier = ">=8.0.0,<31" },
+    { name = "protobuf", specifier = ">=4.21.1,<5" },
+    { name = "pyyaml", specifier = ">=5.3,<7" },
+    { name = "requests-toolbelt", specifier = ">=0.8.0,<2" },
+    { name = "tabulate", specifier = ">=0.8.6,<1" },
+    { name = "typing-extensions", marker = "python_full_version < '3.9'", specifier = ">=3.7.4,<5" },
+    { name = "urllib3", specifier = "<2.0.0" },
+]
+provides-extras = ["all", "kubernetes"]
 
 [[package]]
 name = "kfp-kubernetes"

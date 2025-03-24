@@ -437,7 +437,8 @@ jinja2==3.1.6 \
     --hash=sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d \
     --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
     # via ilab-on-ocp (pyproject.toml)
-kfp @ git+https://github.com/kubeflow/pipelines@26946059963051cce5a8a70270ebc6bc9f7e2bd6#egg=kfp&subdirectory=sdk/python
+kfp @ https://github.com/kubeflow/pipelines/archive/26946059963051cce5a8a70270ebc6bc9f7e2bd6.tar.gz#egg=kfp&subdirectory=sdk/python \
+    --hash=sha256:6ee411a519cb9d2efca4a486e5a1ee01ab4c621ef888b554e422d83a82d7e4bb
     # via
     #   ilab-on-ocp (pyproject.toml)
     #   kfp-kubernetes

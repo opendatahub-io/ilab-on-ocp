@@ -10,7 +10,7 @@ dependencies = [
     "jinja2>=3.1.4",
     "kfp-kubernetes>=1.4.0",
     # Using the KFP SDK with a bugfix
-    "kfp@git+https://github.com/kubeflow/pipelines@26946059963051cce5a8a70270ebc6bc9f7e2bd6#egg=kfp&subdirectory=sdk/python",
+    "kfp@https://github.com/kubeflow/pipelines/archive/26946059963051cce5a8a70270ebc6bc9f7e2bd6.tar.gz#egg=kfp&subdirectory=sdk/python",
     "kubernetes==30.1.0",
     "model-registry==0.2.14",
     "olot==0.1.2",
