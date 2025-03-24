@@ -110,18 +110,18 @@ def ilab_pipeline(
     """InstructLab pipeline
 
     Args:
-        output_oci_model_uri: The URI path to the OCI registry where the output model is pushed to.
-        output_oci_registry_secret: The secret key to use for OCI output registry.
-        output_model_name:  Model Registration parameter. The name of the model used during model registration.
-        output_model_version: Model Registration parameter. The version of the model used during model registration.
-        output_model_registry_api_url: Model Registration parameter. The API URL of the model registry used during model registration.
-        output_model_registry_name: Model Registration parameter. The name of the model registry used for model registration. If not specified, the name is parsed from output_model_registry_api_url.
-        output_modelcar_base_image: The base image used for output model. The default value does not work in a disconnected environment.
+        output_oci_model_uri: The URI path to the OCI registry where the output model is pushed to. Optional.
+        output_oci_registry_secret: The secret key to use for OCI output registry. Optional.
+        output_model_name:  Model Registration parameter. The name of the model used during model registration. Optional.
+        output_model_version: Model Registration parameter. The version of the model used during model registration. Optional.
+        output_model_registry_api_url: Model Registration parameter. The API URL of the model registry used during model registration. Optional.
+        output_model_registry_name: Model Registration parameter. The name of the model registry used for model registration. If not specified, the name is parsed from output_model_registry_api_url. Optional.
+        output_modelcar_base_image: The base image used for output model. The default value does not work in a disconnected environment.  Optional.
 
         sdg_repo_url: SDG parameter. Points to a taxonomy git repository. E.g. "https://github.com/instructlab/taxonomy.git"
         sdg_repo_secret: SDG parameter. The name of the k8s secret holding access credentials to the sdg_repo_url.
-        sdg_repo_branch: SDG parameter. Points to a branch within the taxonomy git repository. If set, has priority over sdg_repo_pr
-        sdg_repo_pr: SDG parameter. Points to a pull request against the taxonomy git repository
+        sdg_repo_branch: SDG parameter. Points to a branch within the taxonomy git repository. If set, has priority over sdg_repo_pr.  Optional.
+        sdg_repo_pr: SDG parameter. Points to a pull request against the taxonomy git repository. Optional.
         sdg_teacher_secret: SDG parameter. The name of the k8s secret key holding access credentials to the teacher server.
         sdg_base_model: SDG parameter. The LLM model used to generate the synthetic dataset. This can be a model from OCI such as "oci://registry.redhat.io/rhelai1/modelcar-granite-8b-code-instruct:latest" or "s3://<BUCKET>/<PATH_TO_MODEL>".
         sdg_scale_factor: SDG parameter. The total number of instructions to be generated.
@@ -131,9 +131,9 @@ def ilab_pipeline(
         sdg_batch_size: SDG parameter. The number of completions to per request to the teacher model. This can be increased to improve SDG performance based on the hardware of the teacher model.
         sdg_num_workers: SDG parameter. The number of concurrent workers sending completion requests. This can be increased to improve SDG performance based on the hardware of the teacher model.
 
-        train_tolerations: Training parameter. List of tolerations applied to training pods.
-        train_node_selectors: Training parameter. A JSON containing node selectors applied to training pods.
-        train_gpu_identifier: Training parameter. The GPU type used for training pods, e.g. nvidia.com/gpu
+        train_tolerations: Training parameter. List of tolerations applied to training pods. Optional.
+        train_node_selectors: Training parameter. A JSON containing node selectors applied to training pods. Optional.
+        train_gpu_identifier: Training parameter. The GPU type used for training pods, e.g. nvidia.com/gpu.
         train_gpu_per_worker: Training parameter. Number of GPUs per each node/worker to use for training.
         train_cpu_per_worker: Training parameter. Number of CPUs per each node/worker to use for training.
         train_memory_per_worker: Training parameter. Memory per GPU per each node/worker to use for training.

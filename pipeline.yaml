@@ -3150,38 +3150,39 @@ root:
         parameterType: BOOLEAN
       output_model_name:
         description: ' Model Registration parameter. The name of the model used during
-          model registration.'
+          model registration. Optional.'
         isOptional: true
         parameterType: STRING
       output_model_registry_api_url:
         description: Model Registration parameter. The API URL of the model registry
-          used during model registration.
+          used during model registration. Optional.
         isOptional: true
         parameterType: STRING
       output_model_registry_name:
         description: Model Registration parameter. The name of the model registry
           used for model registration. If not specified, the name is parsed from output_model_registry_api_url.
+          Optional.
         isOptional: true
         parameterType: STRING
       output_model_version:
         description: Model Registration parameter. The version of the model used during
-          model registration.
+          model registration. Optional.
         isOptional: true
         parameterType: STRING
       output_modelcar_base_image:
         defaultValue: registry.access.redhat.com/ubi9-micro:latest
         description: The base image used for output model. The default value does
-          not work in a disconnected environment.
+          not work in a disconnected environment.  Optional.
         isOptional: true
         parameterType: STRING
       output_oci_model_uri:
         defaultValue: ''
         description: The URI path to the OCI registry where the output model is pushed
-          to.
+          to. Optional.
         isOptional: true
         parameterType: STRING
       output_oci_registry_secret:
-        description: The secret key to use for OCI output registry.
+        description: The secret key to use for OCI output registry. Optional.
         isOptional: true
         parameterType: STRING
       sdg_base_model:
@@ -3218,12 +3219,12 @@ root:
         parameterType: STRING
       sdg_repo_branch:
         description: SDG parameter. Points to a branch within the taxonomy git repository.
-          If set, has priority over sdg_repo_pr
+          If set, has priority over sdg_repo_pr.  Optional.
         isOptional: true
         parameterType: STRING
       sdg_repo_pr:
         description: SDG parameter. Points to a pull request against the taxonomy
-          git repository
+          git repository. Optional.
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_repo_secret:
@@ -3274,7 +3275,7 @@ root:
       train_gpu_identifier:
         defaultValue: nvidia.com/gpu
         description: Training parameter. The GPU type used for training pods, e.g.
-          nvidia.com/gpu
+          nvidia.com/gpu.
         isOptional: true
         parameterType: STRING
       train_gpu_per_worker:
@@ -3313,7 +3314,7 @@ root:
         parameterType: STRING
       train_node_selectors:
         description: Training parameter. A JSON containing node selectors applied
-          to training pods.
+          to training pods. Optional.
         isOptional: true
         parameterType: STRUCT
       train_num_epochs_phase_1:
@@ -3358,6 +3359,7 @@ root:
         parameterType: NUMBER_INTEGER
       train_tolerations:
         description: Training parameter. List of tolerations applied to training pods.
+          Optional.
         isOptional: true
         parameterType: LIST
 schemaVersion: 2.1.0
