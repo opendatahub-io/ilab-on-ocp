@@ -1857,10 +1857,7 @@ deploymentSpec:
           ):\n        # Handle where the KFP SDK is <2.12.2.\n        escaped_uri\
           \ = tokenizer_model_path[len(\"oci://\") :].replace(\"/\", \"_\")\n    \
           \    tokenizer_model_path = os.path.join(\"/oci\", escaped_uri, \"models\"\
-          )\n\n    # A hack because InstructLab assumes the value for model_name is\
-          \ a valid path and the name of the model.\n    os.symlink(tokenizer_model_path,\
-          \ os.path.join(tempfile.gettempdir(), \"mixtral\"))\n    os.chdir(tempfile.gettempdir())\n\
-          \n    if not taxonomy_repo_secret:\n        username = os.getenv(\"GIT_USERNAME\"\
+          )\n\n    if not taxonomy_repo_secret:\n        username = os.getenv(\"GIT_USERNAME\"\
           )\n        token = os.getenv(\"GIT_TOKEN\")\n        ssh_key = os.getenv(\"\
           GIT_SSH_KEY\")\n    else:\n        print(\"SDG Repo secret specified, fetching...\"\
           )\n        username, token, ssh_key = fetch_secret(\n            taxonomy_repo_secret,\
@@ -1931,29 +1928,38 @@ deploymentSpec:
           \   cwd=taxonomy_path,\n            env=env,\n        )\n        exec_cmd([\"\
           git\", \"checkout\", repo_branch], cwd=taxonomy_path, env=env)\n\n    if\
           \ sdg_secret_name is None:\n        api_key = os.getenv(\"api_key\")\n \
-          \       endpoint = os.getenv(\"endpoint\")\n    else:\n        print(\"\
-          SDG Teacher secret specified, fetching...\")\n        api_key, endpoint\
-          \ = fetch_secret(sdg_secret_name, [\"api_token\", \"endpoint\"])\n     \
-          \   print(\"SDG Teacher secret data retrieved.\")\n\n    # Use the default\
-          \ SSL context since it leverages OpenSSL to use the correct CA bundle.\n\
-          \    http_client = httpx.Client(verify=ssl.create_default_context())\n \
-          \   client = openai.OpenAI(base_url=endpoint, api_key=api_key, http_client=http_client)\n\
-          \n    taxonomy_base = \"main\" if repo_branch or (repo_pr and int(repo_pr)\
-          \ > 0) else \"empty\"\n\n    print(\"Generating synthetic dataset for:\"\
-          )\n    print()\n    print(\n        instructlab.sdg.utils.taxonomy.read_taxonomy(\n\
-          \            taxonomy_path, taxonomy_base, document_output_dir=f\"{sdg_path}/documents\"\
-          \n        )\n    )\n\n    # Generate synthetic dataset\n    # 1.0 is the\
-          \ default size\n    if sdg_sampling_size == 1.0:\n        # generate_data\
-          \ has a magic word for its taxonomy_base argument - 'empty'\n        # it\
-          \ allows generating from the whole repo, see:\n        # https://github.com/instructlab/sdg/blob/c6a9e74a1618b1077cd38e713b8aaed8b7c0c8ce/src/instructlab/sdg/utils/taxonomy.py#L230\n\
+          \       model_name = os.getenv(\"model_name\")\n        endpoint = os.getenv(\"\
+          endpoint\")\n    else:\n        print(\"SDG Teacher secret specified, fetching...\"\
+          )\n        api_key, model_name, endpoint = fetch_secret(\n            sdg_secret_name,\
+          \ [\"api_token\", \"model_name\", \"endpoint\"]\n        )\n        print(\"\
+          SDG Teacher secret data retrieved.\")\n\n    # A hack because InstructLab\
+          \ assumes the value for model_name is a valid path and the name of the model.\n\
+          \    tmp_model_path = os.path.join(tempfile.gettempdir(), model_name)\n\
+          \    # Since a model name can have a slash in it and InstructLab expects\
+          \ this to be a valid path as well, we must\n    # pretend the slashes represent\
+          \ directories.\n    if \"/\" in model_name:\n        os.makedirs(os.path.dirname(tmp_model_path),\
+          \ exist_ok=True)\n    os.symlink(tokenizer_model_path, tmp_model_path)\n\
+          \    os.chdir(tempfile.gettempdir())\n\n    # Use the default SSL context\
+          \ since it leverages OpenSSL to use the correct CA bundle.\n    http_client\
+          \ = httpx.Client(verify=ssl.create_default_context())\n    client = openai.OpenAI(base_url=endpoint,\
+          \ api_key=api_key, http_client=http_client)\n\n    taxonomy_base = \"main\"\
+          \ if repo_branch or (repo_pr and int(repo_pr) > 0) else \"empty\"\n\n  \
+          \  print(\"Generating synthetic dataset for:\")\n    print()\n    print(\n\
+          \        instructlab.sdg.utils.taxonomy.read_taxonomy(\n            taxonomy_path,\
+          \ taxonomy_base, document_output_dir=f\"{sdg_path}/documents\"\n       \
+          \ )\n    )\n\n    # Generate synthetic dataset\n    # 1.0 is the default\
+          \ size\n    if sdg_sampling_size == 1.0:\n        # generate_data has a\
+          \ magic word for its taxonomy_base argument - 'empty'\n        # it allows\
+          \ generating from the whole repo, see:\n        # https://github.com/instructlab/sdg/blob/c6a9e74a1618b1077cd38e713b8aaed8b7c0c8ce/src/instructlab/sdg/utils/taxonomy.py#L230\n\
           \        instructlab.sdg.generate_data(\n            client=client,\n  \
           \          num_instructions_to_generate=num_instructions_to_generate,\n\
           \            output_dir=sdg_path,\n            taxonomy=taxonomy_path,\n\
-          \            taxonomy_base=taxonomy_base,\n            model_name=\"mixtral\"\
-          ,\n            pipeline=pipeline,\n            chunk_word_count=1000,\n\
-          \            server_ctx_size=4096,\n            batch_size=sdg_batch_size,\n\
-          \            num_cpus=sdg_num_cpus,\n        )\n    # Tweak precomputed\
-          \ skills data ratio if needed\n    else:\n        skills_recipe = \"/usr/share/instructlab/sdg/default_data_recipes/skills.yaml\"\
+          \            taxonomy_base=taxonomy_base,\n            model_name=model_name,\n\
+          \            model_family=\"mixtral\",\n            pipeline=pipeline,\n\
+          \            chunk_word_count=1000,\n            server_ctx_size=4096,\n\
+          \            batch_size=sdg_batch_size,\n            num_cpus=sdg_num_cpus,\n\
+          \        )\n    # Tweak precomputed skills data ratio if needed\n    else:\n\
+          \        skills_recipe = \"/usr/share/instructlab/sdg/default_data_recipes/skills.yaml\"\
           \n\n        def set_precomputed_skills_data_ratio(sampling_size: float,\
           \ skills_recipe: str):\n            if os.path.exists(skills_recipe):\n\
           \                with open(skills_recipe, \"r\", encoding=\"utf-8\") as\
@@ -2015,13 +2021,14 @@ deploymentSpec:
           \      client=client,\n                        num_instructions_to_generate=num_instructions_to_generate,\n\
           \                        output_dir=sdg_path,\n                        taxonomy=taxonomy_path,\n\
           \                        taxonomy_base=taxonomy_base,\n                \
-          \        model_name=\"mixtral\",\n                        pipeline=pipeline,\n\
-          \                        chunk_word_count=1000,\n                      \
-          \  server_ctx_size=4096,\n                        batch_size=sdg_batch_size,\n\
-          \                        num_cpus=sdg_num_cpus,\n                    )\n\
-          \                except Exception as e:\n                    print(f\"Failed\
-          \ to set precomputed skills data ratio: {e}\")\n                    raise\n\
-          \n    # Cleanup git configurations\n    if git_credentials_path and os.path.exists(git_credentials_path):\n\
+          \        model_name=model_name,\n                        model_family=\"\
+          mixtral\",\n                        pipeline=pipeline,\n               \
+          \         chunk_word_count=1000,\n                        server_ctx_size=4096,\n\
+          \                        batch_size=sdg_batch_size,\n                  \
+          \      num_cpus=sdg_num_cpus,\n                    )\n                except\
+          \ Exception as e:\n                    print(f\"Failed to set precomputed\
+          \ skills data ratio: {e}\")\n                    raise\n\n    # Cleanup\
+          \ git configurations\n    if git_credentials_path and os.path.exists(git_credentials_path):\n\
           \        os.remove(git_credentials_path)\n        print(f\"{git_credentials_path}\
           \ deleted successfully\")\n    if ssh_key_path and os.path.exists(ssh_key_path):\n\
           \        os.remove(ssh_key_path)\n        print(f\"{ssh_key_path} deleted\

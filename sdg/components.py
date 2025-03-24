@@ -163,10 +163,6 @@ def sdg_op(
         escaped_uri = tokenizer_model_path[len("oci://") :].replace("/", "_")
         tokenizer_model_path = os.path.join("/oci", escaped_uri, "models")
 
-    # A hack because InstructLab assumes the value for model_name is a valid path and the name of the model.
-    os.symlink(tokenizer_model_path, os.path.join(tempfile.gettempdir(), "mixtral"))
-    os.chdir(tempfile.gettempdir())
-
     if not taxonomy_repo_secret:
         username = os.getenv("GIT_USERNAME")
         token = os.getenv("GIT_TOKEN")
@@ -303,11 +299,23 @@ def sdg_op(
 
     if sdg_secret_name is None:
         api_key = os.getenv("api_key")
+        model_name = os.getenv("model_name")
         endpoint = os.getenv("endpoint")
     else:
         print("SDG Teacher secret specified, fetching...")
-        api_key, endpoint = fetch_secret(sdg_secret_name, ["api_token", "endpoint"])
+        api_key, model_name, endpoint = fetch_secret(
+            sdg_secret_name, ["api_token", "model_name", "endpoint"]
+        )
         print("SDG Teacher secret data retrieved.")
+
+    # A hack because InstructLab assumes the value for model_name is a valid path and the name of the model.
+    tmp_model_path = os.path.join(tempfile.gettempdir(), model_name)
+    # Since a model name can have a slash in it and InstructLab expects this to be a valid path as well, we must
+    # pretend the slashes represent directories.
+    if "/" in model_name:
+        os.makedirs(os.path.dirname(tmp_model_path), exist_ok=True)
+    os.symlink(tokenizer_model_path, tmp_model_path)
+    os.chdir(tempfile.gettempdir())
 
     # Use the default SSL context since it leverages OpenSSL to use the correct CA bundle.
     http_client = httpx.Client(verify=ssl.create_default_context())
@@ -335,7 +343,8 @@ def sdg_op(
             output_dir=sdg_path,
             taxonomy=taxonomy_path,
             taxonomy_base=taxonomy_base,
-            model_name="mixtral",
+            model_name=model_name,
+            model_family="mixtral",
             pipeline=pipeline,
             chunk_word_count=1000,
             server_ctx_size=4096,
@@ -435,7 +444,8 @@ def sdg_op(
                         output_dir=sdg_path,
                         taxonomy=taxonomy_path,
                         taxonomy_base=taxonomy_base,
-                        model_name="mixtral",
+                        model_name=model_name,
+                        model_family="mixtral",
                         pipeline=pipeline,
                         chunk_word_count=1000,
                         server_ctx_size=4096,
