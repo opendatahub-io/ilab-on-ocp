@@ -1,18 +1,9 @@
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
-  annotations:
-    opendatahub.io/accelerator-name: migrated-gpu
-    opendatahub.io/apiProtocol: REST
-    opendatahub.io/recommended-accelerators: '["nvidia.com/gpu"]'
-    opendatahub.io/template-display-name: vLLM ServingRuntime for KServe
-    opendatahub.io/template-name: vllm-runtime
-    openshift.io/display-name: mixtral
-  creationTimestamp: "2024-10-25T15:59:12Z"
-  generation: 3
   labels:
     opendatahub.io/dashboard: "true"
-  name: mixtral
+  name: prometheus
 spec:
   annotations:
     prometheus.io/path: /metrics
@@ -39,7 +30,7 @@ spec:
     - mountPath: /dev/shm
       name: shm
     - mountPath: /mnt
-      name: mixtral-serve
+      name: prometheus-serve
   multiModel: false
   storageHelper:
     disabled: true
@@ -47,9 +38,9 @@ spec:
   - autoSelect: true
     name: vLLM
   volumes:
-  - name: mixtral-serve
+  - name: prometheus-serve
     persistentVolumeClaim:
-      claimName: mixtral-serving-ilab
+      claimName: prometheus-serving-ilab
   - emptyDir:
       medium: Memory
       sizeLimit: 2Gi

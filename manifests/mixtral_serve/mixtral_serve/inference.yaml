@@ -1,0 +1,34 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  labels:
+    opendatahub.io/dashboard: "true"
+  name: mixtral
+spec:
+  predictor:
+    annotations:
+      serving.knative.dev/progress-deadline: 30m
+    maxReplicas: 1
+    minReplicas: 1
+    model:
+      args:
+        - '--dtype=bfloat16'
+        - '--tensor-parallel-size=4'
+      modelFormat:
+        name: vLLM
+      name: ''
+      resources:
+        limits:
+          cpu: '4'
+          memory: 40Gi
+          nvidia.com/gpu: '4'
+        requests:
+          cpu: '4'
+          memory: 40Gi
+          nvidia.com/gpu: '4'
+      runtime: mixtral
+      storageUri: 'pvc://mixtral-serving-ilab/model/'
+    tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists

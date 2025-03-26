@@ -7,8 +7,15 @@ spec:
     spec:
       containers:
       - name: oras-copy-model
-        image: ghcr.io/oras-project/oras:main@sha256:8859e7e3ae510fb921ebeb109ac9d3e3bb91799e0d52001ae456df33929029db
-        command: ["oras", "pull", "registry.redhat.io/rhelai1/prometheus-8x7b-v2-0@sha256:9fcb49c230f6e73ff944377307bb83a05ae3ac20300af75e429151f4f8bf4285", "--output", "/mnt/model", "--registry-config", "/workspace/.docker"]
+        image: 'ghcr.io/oras-project/oras:v1.2.0'
+        command:
+          - oras
+          - pull
+          - registry.redhat.io/rhelai1/prometheus-8x7b-v2-0:1.4
+          - --output
+          - /mnt/model
+          - --registry-config
+          - /workspace/.docker
         volumeMounts:
         - name: docker-config
           mountPath: /workspace/.docker

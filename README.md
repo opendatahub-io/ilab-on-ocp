@@ -1,194 +1,111 @@
 # InstructLab on Red Hat OpenShift AI
 
-This repo will serve as the central location for the code, Containerfiles and yamls needed to deploy [Instructlab](https://instructlab.ai/) onto an [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift) cluster with [Red Hat OpenShift AI (RHOAI)](https://www.redhat.com/en/technologies/cloud-computing/openshift/openshift-ai). This project leverages a number of the tools included with RHOAI working together to run InstructLab. Specifically, Data Science Pipelines for application orchestration, Kserve Serving for model serving, and the Distributed Training Operator to run our model training across multiple GPU enabled nodes.
-
+This repo is the central location for the code, Container files and yamls needed to deploy [Instructlab] onto an [OpenShift] cluster with [Red Hat OpenShift AI (RHOAI)]. This project leverages a number of the tools included with RHOAI working together to run InstructLab. Specifically, Data Science Pipelines for application orchestration, Kserve Serving for model serving, and the Distributed Training Operator to run our model training across multiple GPU enabled nodes.
 
 <p align="center"><img src="assets/images/completed_pipeline.png" width=50%\></p>
 
-
 ## Getting Started
 
-This project makes running the InstructLab large language model (LLM) fine-tuning process easy and flexible on OpenShift. However, before getting started there are a few prerequisites and additional setup steps that needs to be completed.
+This project makes running the InstructLab large language model (LLM) fine-tuning process easy and flexible on OpenShift. However, before getting started there are a few prerequisites and additional setup steps that need to be completed.
 
-### Cluster Requirements
+## Requirements
 
-#### Operators:
-The following Operators must be installed on your OpenShift cluster:
+* An OpenShift cluster with:
+  * Sufficient GPUs available for training.
+    * At a minimum, a node with at least 4 GPUs such as an NVIDIA A100s
+    * This is not including GPUs required to deploy and run Judge & Teacher models (see below)
+  * The following Operators already installed:
+    * Red Hat Authorino
+    * Red Hat Openshift Serverless
+    * Red Hat OpenShift Service Mesh v2
+      * NOTE: v3 is not compatible with RHOAI
+* [SDG taxonomy tree] to utilize for Synthetic Data Generation (SDG)
+* An OpenShift AI installation, with:
+  * Training Operator, ModelRegistry, KServe, and Data Science Pipelines components installed via the DataScienceCluster
+    * See docs on [Installing RHOAI components via DSC]
+  * For [Model Registry] you will need:
+    * Model Registry API URL
+    * Model Registry Name
+  * A data science project/namespace, in this document this will be referred to as `<data-science-project-name/namespace>`
+    * The Data Science Project should have a [Data Science Pipelines Server Configured]
+  * A GPU [Accelerator profile enabled and created]
+    * NOTE: Install NVIDIA GPU Operator 24.6
+        * This is due to a [known issue with CUDA Driver] versions mismatch, you can only use this Operator version.
+* A [StorageClass] that supports dynamic provisioning with [ReadWriteMany] access mode.
+  * You can deploy your own using [nfs storage] for non production use cases
+* Have the location for the [base model configured] (i.e. S3 or OCI)
+* A locally installed [oc] command line tool to create and manage kubernetes resources.
+* [Teacher and Judge models] being served with their access credentials stored as k8s secrets in `<data-science-project-name/namespace>`
+* An OCI registry to push the output model to along with credentials with push access
 
-* [Red Hat OpenShift AI](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_cloud_service/1/html/installing_and_uninstalling_openshift_ai_cloud_service/installing-and-deploying-openshift-ai_install)
-* [Node Feature Discovery and NVIDIA GPU Operators](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_cloud_service/1/html/installing_and_uninstalling_openshift_ai_cloud_service/enabling-nvidia-gpus_install)
+#### Disconnected Cluster Requirements
 
-#### Training operator
-Within the DataScienceCluster definition the following must be defined and set to managed under Spec -> Components.
+Follow the [disconnected setup instructions] for setting up your disconnected environment.
 
-``` bash
-oc edit dsc
-      trainingoperator:
-        managementState: Managed
-```
+## Enable the pipeline
 
-To verify the PytorchJob is available in the cluster run the following.
+The InstructLab pipeline is automatically provisioned and managed by the DataSciencePipelinesApplication (DSPA) resource. This management is disabled by default, you may enable it by patching the following field in the DSPA:
 
 ```bash
-oc get pytorchjob
+DS_PROJECT="<data-science-project-name/namespace>"
+DSPA_NAME="dspa" # RHOAI Default name for DSPA
+oc patch dspa ${DSPA_NAME} -n ${DS_PROJECT} --type=merge --patch='{"spec": { "apiServer": { "managedPipelines": { "instructLab": {"state": "Managed"}}}}}'
 ```
 
-If an error is shown PyTorch is not available in cluster.
+## Output OCI Registry
 
-#### Object Storage:
-
-Once the above operators have been successfully installed, you will need to set up object storage for your models and pipeline artifacts. This solution requires object storage to be in place through S3 compatible storage such as [Noobaa](https://www.noobaa.io/).
-
-1. If using Noobaa, apply the following [tuning paramters](noobaa/README.md).
-2. Create an `Object Bucket Claim` in your namespace. This will serve as the artifact store for your Data Science Pipeline.
-
-
-#### Configure Data Science Pipeline Server:
-
-From within the RHOAI dashboard, navigate to the "Data Science Pipelines" page and click "Configure pipeline server". This will present you with a form where you can upload the credentials for the S3 bucket you created in the previous step.
-
-<p align="center"><img src="assets/images/configure_pipeline_server.png" width=50%\></p>
-
-
-#### Accelerator Profile:
-An accelerator profile must also be defined within the RHOAI dashboard or via CLI to enable GPU acceleration for model serving with Kserve Serving.
-
-```
-apiVersion: v1
-items:
-- apiVersion: dashboard.opendatahub.io/v1
-  kind: AcceleratorProfile
-  metadata:
-    name: gpu
-    namespace: redhat-ods-applications
-  spec:
-    displayName: gpu
-    enabled: true
-    identifier: nvidia.com/gpu
-    tolerations: []
-```
-
-#### Signed Certificate:
-A signed certificate ensures that there are not any unnecessary issues when running the training pipeline.
-
-To deploy a signed certificate in your cluster follow [trusted cluster cert](signed-certificate/README.md) documentation.
-
-#### Teacher and Judge Models:
-
-In addition to model training, InstructLab also performs Synthetic Data Generation (SDG) and Model Evaluation. In both cases another LLM is required to complete these steps. Since these models do not change frequently, we recommend serving them independent of the specific InstructLab pipeline. This allows these these models to be used as a shared resources across the organization.
-
-1. Deploy the Teacher Model following these [instructions](/kubernetes_yaml/mixtral_serve/README.md).
-2. Deploy the Judge Model following these [instructions](/kubernetes_yaml/prometheus_serve/README.md).
-
-Once these two model servers are deployed, we need to add the following secrets to our namespace so that the InstructLab pipeline can successfully communicate with each model. Be sure to add any required CAs to trust to the DSCI or DSPA.
+In your DS project namespace, deploy your OCI output registry secret:
 
 ```yaml
-kind: Secret
+# oci_output_push_secret.yaml
 apiVersion: v1
+kind: Secret
 metadata:
-  name: teacher-server
-data:
-  api_key: <YOUR_MIXTRAL_API_KEY>
-type: Opaque
+  name: <oci-registry-push-secret>
+stringData:
+  .dockerconfigjson: {...}
+type: kubernetes.io/dockerconfigjson
 ```
 
-```yaml
-kind: Secret
-apiVersion: v1
-metadata:
-  name: judge-server
-data:
-  api_key: <YOUR_PROMETHEUS_API_KEY>
-type: Opaque
-```
-
-**NOTE**: You can find and copy the certs needed for the DSCI or DSPA in another ConfigMap, `kube-root-ca.crt`, found in the same namespace as the hosted model
-
-
-### Run the Pipeline
-
-Now that all the cluster requirements have been setup, we are ready to upload and run our InstructLab pipeline!
-
-#### Upload the Pipeline:
-
-Now we can go back to our RHOAI Data Science Pipelines dashboard and select **"Import pipeline"**. We recommend importing the pipeline yaml directly from the github repo using: `https://raw.githubusercontent.com/opendatahub-io/ilab-on-ocp/refs/heads/main/pipeline.yaml`
-<p align="center"><img src="assets/images/import_pipeline.png" width=50%\></p>
-
-#### Create a Run:
-Once the pipeline is uploaded we will be able to select **"Create run"** from the **"Actions"** dropdown. This will present us with a number of parameters we can set to customize our run. Click **"Create run"** at the bottom of the page to kick off your InstructLab pipeline.
-
-<p align="center"><img src="assets/images/parameters.png" width=50%\></p>
-
-#### Available Pipeline Parameters:
-
-| Parameter | Definition |
-|---------- | ---------- |
-|`sdg_repo_url` | SDG parameter. Points to a taxonomy git repository|
-|`sdg_repo_branch` | SDG parameter. Points to a branch within the taxonomy git repository. If set, has priority over sdg_repo_pr|
-|`sdg_repo_pr` |SDG parameter. Points to a pull request against the taxonomy git repository|
-|`sdg_base_model` |SDG parameter. LLM model used to generate the synthetic dataset|
-|`sdg_scale_factor` |SDG parameter. The total number of instructions to be generated|
-|`sdg_pipeline` |SDG parameter. Data generation pipeline to use. Available: 'simple', 'full', or a valid path to a directory of pipeline workflow YAML files. Note that 'full' requires a larger teacher model, Mixtral-8x7b.|
-|`sdg_max_batch_len` |SDG parameter. Maximum tokens per gpu for each batch that will be handled in a single step.|
-|`train_nproc_per_node` |Training parameter. Number of GPUs per each node/worker to use for training.|
-|`train_nnodes` |Training parameter. Number of nodes/workers to train on.|
-|`train_num_epochs_phase_1` |Training parameter for in Phase 1. Number of epochs to run training.|
-|`train_num_epochs_phase_2` |Training parameter for in Phase 2. Number of epochs to run training.|
-|`train_effective_batch_size_phase_1` |Training parameter for in Phase 1. The number of samples in a batch that the model should see before its parameters are updated.|
-|`train_effective_batch_size_phase_2` |Training parameter for in Phase 2. The number of samples in a batch that the model should see before its parameters are updated.|
-|`train_learning_rate_phase_1` |Training parameter for in Phase 1. How fast we optimize the weights during gradient descent. Higher values may lead to unstable learning performance. It's generally recommended to have a low learning rate with a high effective batch size.|
-|`train_learning_rate_phase_2` |Training parameter for in Phase 2. How fast we optimize the weights during gradient descent. Higher values may lead to unstable learning performance. It's generally recommended to have a low learning rate with a high effective batch size.|
-|`train_num_warmup_steps_phase_1` |Training parameter for in Phase 1. The number of steps a model should go through before reaching the full learning rate. We start at 0 and linearly climb up to train_learning_rate.|
-|`train_num_warmup_steps_phase_2` |Training parameter for in Phase 2. The number of steps a model should go through before reaching the full learning rate. We start at 0 and linearly climb up to train_learning_rate.|
-|`train_save_samples` |Training parameter. Number of samples the model should see before saving a checkpoint.|
-|`train_max_batch_len` |Training parameter. Maximum tokens per gpu for each batch that will be handled in a single step.|
-|`train_seed` |Training parameter. Random seed for initializing training.|
-|`mt_bench_max_workers` |MT Bench parameter. Number of workers to use for evaluation with mt_bench or mt_bench_branch. Must be a positive integer or 'auto'.|
-|`mt_bench_merge_system_user_message` |MT Bench parameter. Boolean indicating whether to merge system and user messages (required for Mistral based judges)|
-|`final_eval_max_workers` |Final model evaluation parameter for MT Bench Branch. Number of workers to use for evaluation with mt_bench or mt_bench_branch. Must be a positive integer or 'auto'.|
-|`final_eval_few_shots` |Final model evaluation parameter for MMLU. Number of question-answer pairs provided in the context preceding the question used for evaluation.|
-|`final_eval_batch_size` |Final model evaluation parameter for MMLU. Batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory.|
-|`final_eval_merge_system_user_message` |Final model evaluation parameter for MT Bench Branch. Boolean indicating whether to merge system and user messages (required for Mistral based judges)|
-|`k8s_storage_class_name` |A Kubernetes StorageClass name for persistent volumes. Selected StorageClass must support RWX PersistentVolumes.|
-
-
-### Customize the Pipeline
-
-The `pipeline.yaml` provided in this repo will always represent the most up to date version of the pipeline as our team continues to improve upon it as well as keep it in line with the InstructLab CLI. However, if you are a contributor or simply want to experiment with making custom changes to the pipeline that can be done by simply editing and "compiling" the `pipeline.py` file provided in this repo.
-
-The pipeline yaml is defined by `pipeline.py` file and then converted into an intermediate representation yaml that Data Science Pipelines expects via the KubeFlow Pipelines python SDK. If you want to customize the pipeline in anyway, you can update `pipeline.py`, run the below make command and then upload the pipeline to your Data Science Pipeline instance similar to how we showed [above](#upload-the-pipeline).
+Deploy it in your DS project:
 
 ```bash
-make pipeline
+oc -n <data-science-project-name/namespace> oc apply -f oci_output_push_secret.yaml
 ```
 
-## Developer setup
+Note the `metadata.name` of this secret, you will need this when filling out the InstructLab pipeline parameters.
 
-To collaborate on this repository, please follow these steps:
+## Run the Pipeline
 
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
-2. Run following commands to prepare your local environment
-    ```bash
-    uv sync
-    source .venv/bin/activate
-    ```
+Now that all the cluster requirements have been set up, we are ready to upload and run our InstructLab pipeline!
 
-## Adding/Updating dependencies
+Starting the InstructLab pipeline run is the same as starting any other run using Data Science Pipelines.
 
-When updating python package dependencies in `pyproject.toml`, regenerate [requirements.txt](requirements.txt):
+The instructions for how to create a typical run can be found [here][DSP Run Docs]. For the pipeline selection step, you will be able to select the `InstructLab` pipeline from the pipeline list when creating a run.
 
-```
-uv pip compile pyproject.toml --generate-hashes > requirements.txt
-```
+You can find a description of each Parameter once you go to the run creation page. Some parameters already have defaults, while others do not, and some are optional. Please carefully read the description of each to better customize the pipeline to meet your needs.
 
-To regenerate `[requirements-build.txt](requirements-build.txt)` is currently a manual step.
-For this you need [pybuild-deps](https://pybuild-deps.readthedocs.io/en/latest/usage.html#pybuild-deps-compile) installed.
+<p align="center"><img src="assets/images/parameters-1.png" width=50%\></p>
 
-Temporarily remove `kfp-pipeline-spec` from `requirement.txt`. And run:
+## Troubleshooting
 
-```bash
-pybuild-deps compile requirements.txt -o requirements-build.txt
-```
+For a troubleshooting guide see [here][troubleshooting].
 
-> Note that, we do this because `kfp-pipeline-spec` only includes wheels and not the sources, this breaks
-> `pybuild-deps`, in the future we will need to a workaround (or get the package to include sdist) to automate this.
+[StorageClass]: https://kubernetes.io/docs/concepts/storage/storage-classes/
+[SDG taxonomy tree]: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux_ai/latest/html/creating_skills_and_knowledge_yaml_files/customize_taxonomy_tree
+[ReadWriteMany]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+[Instructlab]: https://instructlab.ai/
+[OpenShift]: https://www.redhat.com/en/technologies/cloud-computing/openshift
+[Red Hat OpenShift AI (RHOAI)]: https://www.redhat.com/en/technologies/cloud-computing/openshift/openshift-ai
+[Installing RHOAI components via DSC]: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/latest/html/installing_and_uninstalling_openshift_ai_self-managed/installing-and-deploying-openshift-ai_install#installing-openshift-ai-components-using-cli_component-install
+[Data Science Pipelines Server Configured]: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/latest/html/working_with_data_science_pipelines/managing-data-science-pipelines_ds-pipelines#configuring-a-pipeline-server_ds-pipelines
+[known issue with CUDA Driver]: https://issues.redhat.com/browse/RHOAIENG-19869
+[Accelerator profile enabled and created]: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.18/html/managing_openshift_ai/enabling_accelerators#enabling-nvidia-gpus_managing-rhoai
+[base model configured]: docs/base_model.md
+[Teacher and Judge models]: manifests/README.md#deploying-teacher-and-judge-models
+[DSP Run Docs]: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/latest/html/working_with_data_science_pipelines/managing-pipeline-runs_ds-pipelines#executing-a-pipeline-run_ds-pipelines
+[oc]: https://docs.redhat.com/en/documentation/openshift_container_platform/latest/html/cli_tools/openshift-cli-oc#cli-about-cli_cli-developer-commands
+[Model Registry]: https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.18/html/managing_model_registries/creating-a-model-registry_managing-model-registries
+[disconnected setup instructions]: ./docs/disconnected_setup.md
+[nfs storage]: ./manifests/nfs_storage/nfs_storage.md
+[troubleshooting]: ./docs/troubleshooting.md
