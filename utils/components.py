@@ -308,8 +308,14 @@ def ilab_importer_op(repository: str, release: str, base_model: dsl.Output[dsl.M
 
 
 @dsl.component(base_image=RUNTIME_GENERIC_IMAGE, install_kfp_package=False)
-def test_model_connection(secret_name: str):
+def test_model_connection(
+    secret_name: str,
+    http_proxy_env_var_value: str,
+    https_proxy_env_var_value: str,
+    no_proxy_env_var_value: str,
+):
     import base64
+    import os
     import ssl
     import sys
     import textwrap
@@ -321,9 +327,13 @@ def test_model_connection(secret_name: str):
 
     config.load_incluster_config()
 
+    os.environ["http_proxy"] = http_proxy_env_var_value
+    os.environ["https_proxy"] = https_proxy_env_var_value
+    os.environ["no_proxy"] = no_proxy_env_var_value
+
     model_endpoint = ""
     model_name = ""
-    model_api_key = ""
+    model_api_token = ""
     with open(
         "/var/run/secrets/kubernetes.io/serviceaccount/namespace", "r"
     ) as namespace_path:
@@ -335,19 +345,19 @@ def test_model_connection(secret_name: str):
         try:
             secret = core_api.read_namespaced_secret(secret_name, namespace)
             print(f"Reading secret {secret_name} data...")
-            model_api_key = base64.b64decode(secret.data["api_token"]).decode("utf-8")
+            model_api_token = base64.b64decode(secret.data["api_token"]).decode("utf-8")
             model_name = base64.b64decode(secret.data["model_name"]).decode("utf-8")
             model_endpoint = base64.b64decode(secret.data["endpoint"]).decode("utf-8")
         except (ApiException, KeyError) as e:
             print(f"""
             ############################################ ERROR #####################################################
             # Error reading {secret_name}. Ensure you created a secret with this name in namespace {namespace} and #
-            # has 'api_key', 'model_name', and 'endpoint' present                                                  #
+            # has 'api_token', 'model_name', and 'endpoint' present                                                #
             ########################################################################################################
             """)
             sys.exit(1)
 
-    request_auth = {"Authorization": f"Bearer {model_api_key}"}
+    request_auth = {"Authorization": f"Bearer {model_api_token}"}
     request_body = {
         "model": model_name,
         "messages": [{"role": "user", "content": "tell me a funny joke."}],
@@ -629,7 +639,12 @@ def test_oci_model(output_oci_model_uri: str, output_oci_registry_secret: str):
 
 
 @dsl.container_component
-def test_taxonomy_repo(sdg_repo_url: str):
+def test_taxonomy_repo(
+    sdg_repo_url: str,
+    http_proxy_env_var_value: str,
+    https_proxy_env_var_value: str,
+    no_proxy_env_var_value: str,
+):
     return dsl.ContainerSpec(
         RUNTIME_GENERIC_IMAGE,
         ["/bin/sh", "-c"],
@@ -637,6 +652,10 @@ def test_taxonomy_repo(sdg_repo_url: str):
             f"""
             # Increase logging verbosity
             set -x &&
+
+            export http_proxy={http_proxy_env_var_value}
+            export https_proxy={https_proxy_env_var_value}
+            export no_proxy={no_proxy_env_var_value}
 
             # Set Preferred CA Cert
             if [ ! -z "$SSL_CERT_DIR" ]; then
@@ -670,6 +689,9 @@ def prerequisites_check_op(
     output_model_registry_api_url: str,
     output_model_name: str,
     output_model_version: str,
+    http_proxy_env_var_value: str,
+    https_proxy_env_var_value: str,
+    no_proxy_env_var_value: str,
 ):
     """
     Pre-validation checks for the InstructLab pipeline.
@@ -677,11 +699,21 @@ def prerequisites_check_op(
     import os
 
     ## Validate judge information
-    test_judge_model_op = test_model_connection(secret_name=eval_judge_secret)
+    test_judge_model_op = test_model_connection(
+        secret_name=eval_judge_secret,
+        http_proxy_env_var_value=http_proxy_env_var_value,
+        https_proxy_env_var_value=https_proxy_env_var_value,
+        no_proxy_env_var_value=no_proxy_env_var_value,
+    )
     test_judge_model_op.set_caching_options(False)
 
     ## Validate teacher information
-    test_teacher_model_op = test_model_connection(secret_name=sdg_teacher_secret)
+    test_teacher_model_op = test_model_connection(
+        secret_name=sdg_teacher_secret,
+        http_proxy_env_var_value=http_proxy_env_var_value,
+        https_proxy_env_var_value=https_proxy_env_var_value,
+        no_proxy_env_var_value=no_proxy_env_var_value,
+    )
     test_teacher_model_op.set_caching_options(False)
 
     # Validate Model Registry configuration
@@ -704,7 +736,12 @@ def prerequisites_check_op(
     test_oci_configuration_op.set_caching_options(False)
 
     # Validate git repository
-    test_taxonomy_repo_op = test_taxonomy_repo(sdg_repo_url=sdg_repo_url)
+    test_taxonomy_repo_op = test_taxonomy_repo(
+        sdg_repo_url=sdg_repo_url,
+        http_proxy_env_var_value=http_proxy_env_var_value,
+        https_proxy_env_var_value=https_proxy_env_var_value,
+        no_proxy_env_var_value=no_proxy_env_var_value,
+    )
     test_taxonomy_repo_op.set_caching_options(False)
 
     # Validate the SDG configuration

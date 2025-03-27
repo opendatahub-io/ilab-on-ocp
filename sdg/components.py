@@ -56,6 +56,9 @@ def sdg_op(
     tokenizer_model: dsl.Input[dsl.Model],
     repo_branch: Optional[str],
     repo_pr: Optional[int],
+    http_proxy_env_var_value: str,
+    https_proxy_env_var_value: str,
+    no_proxy_env_var_value: str,
     taxonomy_path: str = "/data/taxonomy",
     sdg_path: str = "/data/sdg",
     sdg_sampling_size: float = 1.0,
@@ -156,6 +159,10 @@ def sdg_op(
         if match:
             return match.group(1)  # Extracted host
         raise ValueError(f"Invalid SSH repository URL: {repo_url}")
+
+    os.environ["http_proxy"] = http_proxy_env_var_value
+    os.environ["https_proxy"] = https_proxy_env_var_value
+    os.environ["no_proxy"] = no_proxy_env_var_value
 
     tokenizer_model_path = tokenizer_model.path
     if tokenizer_model_path.startswith("oci://"):
