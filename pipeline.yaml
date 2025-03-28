@@ -39,7 +39,7 @@
 #    train_learning_rate_phase_1: float [Default: 2e-05]
 #    train_learning_rate_phase_2: float [Default: 6e-06]
 #    train_max_batch_len: int [Default: 5000.0]
-#    train_memory_per_worker: str [Default: '2Gi']
+#    train_memory_per_worker: str [Default: '56Gi']
 #    train_node_selectors: dict
 #    train_num_epochs_phase_1: int [Default: 7.0]
 #    train_num_epochs_phase_2: int [Default: 10.0]
@@ -2212,7 +2212,8 @@ deploymentSpec:
           \        ###############################################################\\\
           \n        \"\"\")\n        )\n        return\n\n    try:\n        # Extract\
           \ the port out of the URL because the ModelRegistry client expects those\
-          \ as separate arguments.\n        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
+          \ as separate arguments.\n        model_registry_endpoint = model_registry_endpoint.rstrip(\"\
+          /\")\n        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
           \        model_registry_api_url_port = model_registry_api_url_parsed.port\n\
           \n        if model_registry_api_url_port:\n            model_registry_api_server_address\
           \ = model_registry_endpoint.replace(\n                model_registry_api_url_parsed.netloc,\n\
@@ -2325,7 +2326,7 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef test_sdg_params(sdg_batch_size: int, sdg_num_workers: int):\n\
           \    import sys\n    import textwrap\n\n    if (\n        sdg_batch_size\
-          \ < 1\n        or sdg_batch_size > 4096\n        or sdg_num_workers < 2\n\
+          \ < 1\n        or sdg_batch_size > 4096\n        or sdg_num_workers < 1\n\
           \        or sdg_num_workers > 10\n    ):\n        print(\n            textwrap.dedent(\n\
           \                f\"\"\"\\\n                ##############################################\
           \ ERROR ##############################################\n               \
@@ -3134,7 +3135,7 @@ root:
       k8s_storage_class_name:
         defaultValue: standard
         description: A Kubernetes StorageClass name for persistent volumes. Selected
-          StorageClass must support RWX PersistentVolumes.
+          StorageClass must support ReadWriteMany(RWX) PersistentVolume access mode.
         isOptional: true
         parameterType: STRING
       k8s_storage_size:
@@ -3198,9 +3199,10 @@ root:
         parameterType: STRING
       sdg_batch_size:
         defaultValue: 128.0
-        description: SDG parameter. The number of completions to per request to the
-          teacher model. This can be increased to improve SDG performance based on
-          the hardware of the teacher model.
+        description: SDG parameter. The number of completions per request to the teacher
+          model. This can be increased to improve SDG performance based on the hardware
+          of the teacher model or reduced if SDG fails due to connection errors with
+          the teacher model.
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_max_batch_len:
@@ -3212,8 +3214,9 @@ root:
       sdg_num_workers:
         defaultValue: 2.0
         description: SDG parameter. The number of concurrent workers sending completion
-          requests. This can be increased to improve SDG performance based on the
-          hardware of the teacher model.
+          requests to the teacher model. This can be increased to improve SDG performance
+          based on the hardware of the teacher model or reduced if SDG fails due to
+          connection errors with the teacher model. Batching is disabled when sdg_num_workers=1.
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_pipeline:
@@ -3313,9 +3316,9 @@ root:
         isOptional: true
         parameterType: NUMBER_INTEGER
       train_memory_per_worker:
-        defaultValue: 2Gi
+        defaultValue: 56Gi
         description: Training parameter. Memory per GPU per each node/worker to use
-          for training.
+          for training. 56Gi or more is recommended
         isOptional: true
         parameterType: STRING
       train_node_selectors:

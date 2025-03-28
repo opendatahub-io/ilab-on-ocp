@@ -79,7 +79,7 @@ def ilab_pipeline(
     train_gpu_identifier: str = "nvidia.com/gpu",
     train_gpu_per_worker: int = 2,  # FIXME: Not present in default config. Arbitrary value chosen to demonstrate multi-node multi-gpu capabilities. Needs proper reference architecture justification.
     train_cpu_per_worker: str = "2",  # FIXME: Not present in default config. Arbitrary value chosen to demonstrate multi-node multi-gpu capabilities. Needs proper reference architecture justification.
-    train_memory_per_worker: str = "2Gi",  # FIXME: Not present in default config. Arbitrary value chosen to demonstrate multi-node multi-gpu capabilities. Needs proper reference architecture justification.
+    train_memory_per_worker: str = "56Gi",  # Default value set after observing the memory requirements when running the pipeline
     train_num_workers: int = 2,  # FIXME: Not present in default config. Arbitrary value chosen to demonstrate multi-node multi-gpu capabilities. Needs proper reference architecture justification.
     train_num_epochs_phase_1: int = 7,  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L364
     train_num_epochs_phase_2: int = 10,  # https://github.com/instructlab/instructlab/blob/v0.21.2/tests/testdata/default_config.yaml#L377
@@ -128,15 +128,15 @@ def ilab_pipeline(
         sdg_pipeline: SDG parameter. Data generation pipeline to use. Available: 'simple', 'full', or a valid path to a directory of pipeline workflow YAML files. Note that 'full' requires a larger teacher model, Mixtral-8x7b.
         sdg_max_batch_len: SDG parameter. Maximum tokens per gpu for each batch that will be handled in a single step.
         sdg_sample_size: SDG parameter. Represents the sdg skills recipe sampling size as percentage in decimal form.
-        sdg_batch_size: SDG parameter. The number of completions to per request to the teacher model. This can be increased to improve SDG performance based on the hardware of the teacher model.
-        sdg_num_workers: SDG parameter. The number of concurrent workers sending completion requests. This can be increased to improve SDG performance based on the hardware of the teacher model.
+        sdg_batch_size: SDG parameter. The number of completions per request to the teacher model. This can be increased to improve SDG performance based on the hardware of the teacher model or reduced if SDG fails due to connection errors with the teacher model.
+        sdg_num_workers: SDG parameter. The number of concurrent workers sending completion requests to the teacher model. This can be increased to improve SDG performance based on the hardware of the teacher model or reduced if SDG fails due to connection errors with the teacher model. Batching is disabled when sdg_num_workers=1.
 
         train_tolerations: Training parameter. List of tolerations applied to training pods.
         train_node_selectors: Training parameter. A JSON containing node selectors applied to training pods.
         train_gpu_identifier: Training parameter. The GPU type used for training pods, e.g. nvidia.com/gpu
         train_gpu_per_worker: Training parameter. Number of GPUs per each node/worker to use for training.
         train_cpu_per_worker: Training parameter. Number of CPUs per each node/worker to use for training.
-        train_memory_per_worker: Training parameter. Memory per GPU per each node/worker to use for training.
+        train_memory_per_worker: Training parameter. Memory per GPU per each node/worker to use for training. 56Gi or more is recommended
         train_num_workers: Training parameter. Number of nodes/workers to train on.
         train_num_epochs_phase_1: Training parameter for in Phase 1. Number of epochs to run training.
         train_num_epochs_phase_2: Training parameter for in Phase 2. Number of epochs to run training.
@@ -161,7 +161,7 @@ def ilab_pipeline(
         eval_gpu_identifier: General evaluation parameter. The GPU type used for training pods, e.g. nvidia.com/gpu
         eval_judge_secret: General evaluation parameter: The name of the k8s secret key holding access credentials to the judge server.
 
-        k8s_storage_class_name: A Kubernetes StorageClass name for persistent volumes. Selected StorageClass must support RWX PersistentVolumes.
+        k8s_storage_class_name: A Kubernetes StorageClass name for persistent volumes. Selected StorageClass must support ReadWriteMany(RWX) PersistentVolume access mode.
         k8s_storage_size: The storage size of the persistent volume used for data passing within the pipeline.
     """
     # Pre-requisites check stage

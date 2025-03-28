@@ -394,7 +394,7 @@ def test_sdg_params(sdg_batch_size: int, sdg_num_workers: int):
     if (
         sdg_batch_size < 1
         or sdg_batch_size > 4096
-        or sdg_num_workers < 2
+        or sdg_num_workers < 1
         or sdg_num_workers > 10
     ):
         print(
@@ -444,6 +444,7 @@ def test_model_registry(
 
     try:
         # Extract the port out of the URL because the ModelRegistry client expects those as separate arguments.
+        model_registry_endpoint = model_registry_endpoint.rstrip("/")
         model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)
         model_registry_api_url_port = model_registry_api_url_parsed.port
 
