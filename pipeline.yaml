@@ -2212,7 +2212,8 @@ deploymentSpec:
           \        ###############################################################\\\
           \n        \"\"\")\n        )\n        return\n\n    try:\n        # Extract\
           \ the port out of the URL because the ModelRegistry client expects those\
-          \ as separate arguments.\n        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
+          \ as separate arguments.\n        model_registry_endpoint = model_registry_endpoint.rstrip(\"\
+          /\")\n        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
           \        model_registry_api_url_port = model_registry_api_url_parsed.port\n\
           \n        if model_registry_api_url_port:\n            model_registry_api_server_address\
           \ = model_registry_endpoint.replace(\n                model_registry_api_url_parsed.netloc,\n\
@@ -2325,7 +2326,7 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef test_sdg_params(sdg_batch_size: int, sdg_num_workers: int):\n\
           \    import sys\n    import textwrap\n\n    if (\n        sdg_batch_size\
-          \ < 1\n        or sdg_batch_size > 4096\n        or sdg_num_workers < 2\n\
+          \ < 1\n        or sdg_batch_size > 4096\n        or sdg_num_workers < 1\n\
           \        or sdg_num_workers > 10\n    ):\n        print(\n            textwrap.dedent(\n\
           \                f\"\"\"\\\n                ##############################################\
           \ ERROR ##############################################\n               \
@@ -3198,9 +3199,10 @@ root:
         parameterType: STRING
       sdg_batch_size:
         defaultValue: 128.0
-        description: SDG parameter. The number of completions to per request to the
-          teacher model. This can be increased to improve SDG performance based on
-          the hardware of the teacher model.
+        description: SDG parameter. The number of completions per request to the teacher
+          model. This can be increased to improve SDG performance based on the hardware
+          of the teacher model or reduced if SDG fails due to connection errors with
+          the teacher model.
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_max_batch_len:
@@ -3212,8 +3214,9 @@ root:
       sdg_num_workers:
         defaultValue: 2.0
         description: SDG parameter. The number of concurrent workers sending completion
-          requests. This can be increased to improve SDG performance based on the
-          hardware of the teacher model.
+          requests to the teacher model. This can be increased to improve SDG performance
+          based on the hardware of the teacher model or reduced if SDG fails due to
+          connection errors with the teacher model. Batching is disabled when sdg_num_workers=1.
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_pipeline:

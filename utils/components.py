@@ -394,7 +394,7 @@ def test_sdg_params(sdg_batch_size: int, sdg_num_workers: int):
     if (
         sdg_batch_size < 1
         or sdg_batch_size > 4096
-        or sdg_num_workers < 2
+        or sdg_num_workers < 1
         or sdg_num_workers > 10
     ):
         print(
