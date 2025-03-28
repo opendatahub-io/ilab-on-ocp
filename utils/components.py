@@ -444,6 +444,7 @@ def test_model_registry(
 
     try:
         # Extract the port out of the URL because the ModelRegistry client expects those as separate arguments.
+        model_registry_endpoint = model_registry_endpoint.rstrip("/")
         model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)
         model_registry_api_url_port = model_registry_api_url_parsed.port
 
