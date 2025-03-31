@@ -7,48 +7,6 @@ from kfp import dsl
 from utils.consts import RHELAI_IMAGE, TOOLBOX_IMAGE
 
 
-@dsl.container_component
-def git_clone_op(
-    repo_branch: str,
-    repo_pr: Optional[int],
-    repo_url: Optional[str],
-    taxonomy_path: str = "/data/taxonomy",
-):
-    return dsl.ContainerSpec(
-        TOOLBOX_IMAGE,
-        ["/bin/sh", "-c"],
-        [
-            f"""
-            # Increase logging verbosity
-            set -x &&
-
-            # Set Preferred CA Cert
-            if [ -s "$TAXONOMY_CA_CERT_PATH" ]; then
-                export GIT_SSL_NO_VERIFY=false
-                export GIT_SSL_CAINFO="$TAXONOMY_CA_CERT_PATH"
-            elif [ ! -z "$SSL_CERT_DIR" ]; then
-                export GIT_SSL_NO_VERIFY=false
-                export GIT_SSL_CAPATH="$SSL_CERT_DIR"
-            elif [ -s "$SSL_CERT_FILE" ]; then
-                export GIT_SSL_NO_VERIFY=false
-                export GIT_SSL_CAINFO="$SSL_CERT_FILE"
-            fi
-
-            # Clone Taxonomy Repo
-            git clone {repo_url} {taxonomy_path} &&
-            cd {taxonomy_path} &&
-
-            # Checkout and use taxonomy repo branch or PR if specified
-            if [ -n "{repo_branch}" ]; then
-                git fetch origin {repo_branch} && git checkout {repo_branch};
-            elif [ -n "{repo_pr}" ] && [ {repo_pr} -gt 0 ]; then
-                git fetch origin pull/{repo_pr}/head:{repo_pr} && git checkout {repo_pr};
-            fi
-            """
-        ],
-    )
-
-
 @dsl.component(base_image=RHELAI_IMAGE, install_kfp_package=False)
 def sdg_op(
     num_instructions_to_generate: int,
