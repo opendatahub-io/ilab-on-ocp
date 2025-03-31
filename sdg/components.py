@@ -295,7 +295,7 @@ def sdg_op(
             cwd=taxonomy_path,
             env=env,
         )
-        exec_cmd(["git", "checkout", repo_branch], cwd=taxonomy_path, env=env)
+        exec_cmd(["git", "checkout", f"pr-{repo_pr}"], cwd=taxonomy_path, env=env)
 
     if sdg_secret_name is None:
         api_key = os.getenv("api_key")

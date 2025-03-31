@@ -1930,9 +1930,9 @@ deploymentSpec:
           \ # Fetch pull request head\n        exec_cmd(\n            [\"git\", \"\
           fetch\", \"origin\", f\"pull/{repo_pr}/head:pr-{repo_pr}\"],\n         \
           \   cwd=taxonomy_path,\n            env=env,\n        )\n        exec_cmd([\"\
-          git\", \"checkout\", repo_branch], cwd=taxonomy_path, env=env)\n\n    if\
-          \ sdg_secret_name is None:\n        api_key = os.getenv(\"api_key\")\n \
-          \       model_name = os.getenv(\"model_name\")\n        endpoint = os.getenv(\"\
+          git\", \"checkout\", f\"pr-{repo_pr}\"], cwd=taxonomy_path, env=env)\n\n\
+          \    if sdg_secret_name is None:\n        api_key = os.getenv(\"api_key\"\
+          )\n        model_name = os.getenv(\"model_name\")\n        endpoint = os.getenv(\"\
           endpoint\")\n    else:\n        print(\"SDG Teacher secret specified, fetching...\"\
           )\n        api_key, model_name, endpoint = fetch_secret(\n            sdg_secret_name,\
           \ [\"api_token\", \"model_name\", \"endpoint\"]\n        )\n        print(\"\
