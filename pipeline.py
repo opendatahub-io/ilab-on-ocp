@@ -62,7 +62,7 @@ def ilab_pipeline(
     # SDG phase
     sdg_repo_url: str = None,
     sdg_repo_secret: str = "taxonomy-repo-secret",
-    sdg_repo_branch: Optional[str] = None,
+    sdg_repo_branch: str = None,
     sdg_repo_pr: Optional[
         int
     ] = None,  # FIXME: https://issues.redhat.com/browse/RHOAIRFE-467

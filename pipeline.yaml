@@ -636,12 +636,14 @@ components:
     inputDefinitions:
       parameters:
         base_branch:
+          isOptional: true
           parameterType: STRING
         base_model_dir:
           parameterType: STRING
         batch_size:
           parameterType: STRING
         candidate_branch:
+          isOptional: true
           parameterType: STRING
         candidate_model:
           isOptional: true
@@ -708,8 +710,10 @@ components:
         pipeline:
           parameterType: STRING
         repo_branch:
+          isOptional: true
           parameterType: STRING
         repo_pr:
+          isOptional: true
           parameterType: NUMBER_INTEGER
         repo_url:
           isOptional: true
@@ -1364,10 +1368,10 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef run_final_eval_op(\n    base_model_dir: str,\n    base_branch:\
-          \ str,\n    candidate_branch: str,\n    max_workers: str,\n    few_shots:\
-          \ int,\n    batch_size: str,\n    merge_system_user_message: bool,\n   \
-          \ candidate_model: str = None,\n    taxonomy_path: str = \"/input/taxonomy\"\
+          \ *\n\ndef run_final_eval_op(\n    base_model_dir: str,\n    max_workers:\
+          \ str,\n    few_shots: int,\n    batch_size: str,\n    merge_system_user_message:\
+          \ bool,\n    base_branch: str = None,\n    candidate_branch: str = None,\n\
+          \    candidate_model: str = None,\n    taxonomy_path: str = \"/input/taxonomy\"\
           ,\n    sdg_path: str = \"/input/sdg\",\n    mmlu_branch_output_path: str\
           \ = \"/output/mmlu_branch\",\n    mt_bench_branch_output_path: str = \"\
           /output/mt_bench_branch\",\n    judge_secret_name: str = None,\n):\n   \
@@ -1802,8 +1806,8 @@ deploymentSpec:
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef sdg_op(\n    num_instructions_to_generate: int,\n    pipeline:\
-          \ str,\n    tokenizer_model: dsl.Input[dsl.Model],\n    repo_branch: Optional[str],\n\
-          \    repo_pr: Optional[int],\n    taxonomy_path: str = \"/data/taxonomy\"\
+          \ str,\n    tokenizer_model: dsl.Input[dsl.Model],\n    repo_branch: str\
+          \ = None,\n    repo_pr: int = None,\n    taxonomy_path: str = \"/data/taxonomy\"\
           ,\n    sdg_path: str = \"/data/sdg\",\n    sdg_sampling_size: float = 1.0,\n\
           \    sdg_secret_name: str = None,\n    sdg_batch_size: int = None,\n   \
           \ sdg_num_cpus: int = None,\n    taxonomy_repo_secret: str = None,\n   \

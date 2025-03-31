@@ -9,12 +9,12 @@ from utils.consts import PYTHON_IMAGE, RHELAI_IMAGE
 @component(base_image=RHELAI_IMAGE, install_kfp_package=False)
 def run_final_eval_op(
     base_model_dir: str,
-    base_branch: str,
-    candidate_branch: str,
     max_workers: str,
     few_shots: int,
     batch_size: str,
     merge_system_user_message: bool,
+    base_branch: str = None,
+    candidate_branch: str = None,
     candidate_model: str = None,
     taxonomy_path: str = "/input/taxonomy",
     sdg_path: str = "/input/sdg",
