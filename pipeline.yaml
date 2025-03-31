@@ -2326,12 +2326,12 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef test_sdg_params(sdg_batch_size: int, sdg_num_workers: int):\n\
           \    import sys\n    import textwrap\n\n    if (\n        sdg_batch_size\
-          \ < 1\n        or sdg_batch_size > 4096\n        or sdg_num_workers < 1\n\
+          \ < 1\n        or sdg_batch_size > 4096\n        or sdg_num_workers < 2\n\
           \        or sdg_num_workers > 10\n    ):\n        print(\n            textwrap.dedent(\n\
           \                f\"\"\"\\\n                ##############################################\
           \ ERROR ##############################################\n               \
           \ # sdg_batch_size must be a value between 1-4096 and sdg_num_workers must\
-          \ be a value between 1-10  #\n                ###################################################################################################\\\
+          \ be a value between 2-10  #\n                ###################################################################################################\\\
           \n                \"\"\"\n            )\n        )\n        sys.exit(1)\n\
           \n    print(\n        textwrap.dedent(\n            f\"\"\"\\\n        \
           \    ############# INFO #############\n            # The SDG parameters\
@@ -3200,9 +3200,9 @@ root:
       sdg_batch_size:
         defaultValue: 128.0
         description: SDG parameter. The number of completions per request to the teacher
-          model. This can be increased to improve SDG performance based on the hardware
-          of the teacher model or reduced if SDG fails due to connection errors with
-          the teacher model.
+          model. Must be a value between 1-4096. This can be increased to improve
+          SDG performance based on the hardware of the teacher model or reduced if
+          SDG fails due to connection errors with the teacher model.
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_max_batch_len:
@@ -3214,9 +3214,10 @@ root:
       sdg_num_workers:
         defaultValue: 2.0
         description: SDG parameter. The number of concurrent workers sending completion
-          requests to the teacher model. This can be increased to improve SDG performance
-          based on the hardware of the teacher model or reduced if SDG fails due to
-          connection errors with the teacher model. Batching is disabled when sdg_num_workers=1.
+          requests to the teacher model. Must be a value between 2-10. This can be
+          increased to improve SDG performance based on the hardware of the teacher
+          model or reduced if SDG fails due to connection errors with the teacher
+          model.
         isOptional: true
         parameterType: NUMBER_INTEGER
       sdg_pipeline:
