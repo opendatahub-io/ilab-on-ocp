@@ -190,7 +190,7 @@ def sdg_op(
     if ssl_cert_dir and os.path.exists(ssl_cert_dir):
         print(f"CA detected at {ssl_cert_dir}")
         env["GIT_SSL_CAPATH"] = ssl_cert_dir
-        os.environ["GIT_SSL_CAPATH"] = ca_cert_path
+        os.environ["GIT_SSL_CAPATH"] = ssl_cert_dir
     elif ssl_cert_file and os.path.exists(ssl_cert_file):
         print(f"CA detected at {ssl_cert_file}")
         env["GIT_SSL_CAINFO"] = ssl_cert_file

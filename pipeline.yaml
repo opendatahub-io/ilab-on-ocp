@@ -1872,7 +1872,7 @@ deploymentSpec:
           \ calls which\n    # Perform nested calls to git clones.\n    if ssl_cert_dir\
           \ and os.path.exists(ssl_cert_dir):\n        print(f\"CA detected at {ssl_cert_dir}\"\
           )\n        env[\"GIT_SSL_CAPATH\"] = ssl_cert_dir\n        os.environ[\"\
-          GIT_SSL_CAPATH\"] = ca_cert_path\n    elif ssl_cert_file and os.path.exists(ssl_cert_file):\n\
+          GIT_SSL_CAPATH\"] = ssl_cert_dir\n    elif ssl_cert_file and os.path.exists(ssl_cert_file):\n\
           \        print(f\"CA detected at {ssl_cert_file}\")\n        env[\"GIT_SSL_CAINFO\"\
           ] = ssl_cert_file\n        os.environ[\"GIT_SSL_CAINFO\"] = ssl_cert_file\n\
           \    else:\n        print(\"No CA detected. Using the CA bundle in the container\
@@ -1943,7 +1943,7 @@ deploymentSpec:
           \ since it leverages OpenSSL to use the correct CA bundle.\n    http_client\
           \ = httpx.Client(verify=ssl.create_default_context())\n    client = openai.OpenAI(base_url=endpoint,\
           \ api_key=api_key, http_client=http_client)\n\n    # Set taxonomy_base =\
-          \ \"empty\" to force all the taxonomy files to be processed \n    # More\
+          \ \"empty\" to force all the taxonomy files to be processed\n    # More\
           \ info at https://github.com/instructlab/sdg/blob/a92b0856307b8f7de9f2faebe701949c9583383f/src/instructlab/sdg/utils/taxonomy.py#L295\n\
           \    taxonomy_base = \"empty\"\n\n    print(\"Generating synthetic dataset\
           \ for:\")\n    print()\n    print(\n        instructlab.sdg.utils.taxonomy.read_taxonomy(\n\
