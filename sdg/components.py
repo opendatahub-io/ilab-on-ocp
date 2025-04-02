@@ -321,7 +321,7 @@ def sdg_op(
     http_client = httpx.Client(verify=ssl.create_default_context())
     client = openai.OpenAI(base_url=endpoint, api_key=api_key, http_client=http_client)
 
-    # Set taxonomy_base = "empty" to force all the taxonomy files to be processed 
+    # Set taxonomy_base = "empty" to force all the taxonomy files to be processed
     # More info at https://github.com/instructlab/sdg/blob/a92b0856307b8f7de9f2faebe701949c9583383f/src/instructlab/sdg/utils/taxonomy.py#L295
     taxonomy_base = "empty"
 
