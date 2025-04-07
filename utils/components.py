@@ -308,8 +308,14 @@ def ilab_importer_op(repository: str, release: str, base_model: dsl.Output[dsl.M
 
 
 @dsl.component(base_image=RUNTIME_GENERIC_IMAGE, install_kfp_package=False)
-def test_model_connection(secret_name: str):
+def test_model_connection(
+    secret_name: str,
+    http_proxy_env_var_value: str,
+    https_proxy_env_var_value: str,
+    no_proxy_env_var_value: str,
+):
     import base64
+    import os
     import ssl
     import sys
     import textwrap
@@ -320,6 +326,10 @@ def test_model_connection(secret_name: str):
     from kubernetes.client.rest import ApiException
 
     config.load_incluster_config()
+
+    os.environ["http_proxy"] = http_proxy_env_var_value
+    os.environ["https_proxy"] = https_proxy_env_var_value
+    os.environ["no_proxy"] = no_proxy_env_var_value
 
     model_endpoint = ""
     model_name = ""
@@ -342,7 +352,7 @@ def test_model_connection(secret_name: str):
             print(f"""
             ############################################ ERROR #####################################################
             # Error reading {secret_name}. Ensure you created a secret with this name in namespace {namespace} and #
-            # has 'api_token', 'model_name', and 'endpoint' present                                                  #
+            # has 'api_token', 'model_name', and 'endpoint' present                                                #
             ########################################################################################################
             """)
             sys.exit(1)
@@ -641,6 +651,9 @@ def prerequisites_check_op(
     output_model_registry_api_url: str,
     output_model_name: str,
     output_model_version: str,
+    http_proxy_env_var_value: str,
+    https_proxy_env_var_value: str,
+    no_proxy_env_var_value: str,
 ):
     """
     Pre-validation checks for the InstructLab pipeline.
@@ -648,11 +661,21 @@ def prerequisites_check_op(
     import os
 
     ## Validate judge information
-    test_judge_model_op = test_model_connection(secret_name=eval_judge_secret)
+    test_judge_model_op = test_model_connection(
+        secret_name=eval_judge_secret,
+        http_proxy_env_var_value=http_proxy_env_var_value,
+        https_proxy_env_var_value=https_proxy_env_var_value,
+        no_proxy_env_var_value=no_proxy_env_var_value,
+    )
     test_judge_model_op.set_caching_options(False)
 
     ## Validate teacher information
-    test_teacher_model_op = test_model_connection(secret_name=sdg_teacher_secret)
+    test_teacher_model_op = test_model_connection(
+        secret_name=sdg_teacher_secret,
+        http_proxy_env_var_value=http_proxy_env_var_value,
+        https_proxy_env_var_value=https_proxy_env_var_value,
+        no_proxy_env_var_value=no_proxy_env_var_value,
+    )
     test_teacher_model_op.set_caching_options(False)
 
     # Validate Model Registry configuration

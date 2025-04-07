@@ -15,6 +15,9 @@ def run_final_eval_op(
     few_shots: int,
     batch_size: str,
     merge_system_user_message: bool,
+    http_proxy_env_var_value: str,
+    https_proxy_env_var_value: str,
+    no_proxy_env_var_value: str,
     candidate_model: str = None,
     taxonomy_path: str = "/input/taxonomy",
     sdg_path: str = "/input/sdg",
@@ -35,6 +38,10 @@ def run_final_eval_op(
     from instructlab.eval.mmlu import MMLUBranchEvaluator
     from instructlab.eval.mt_bench import MTBenchBranchEvaluator
     from instructlab.model.evaluate import qa_pairs_to_qna_to_avg_scores, sort_score
+
+    os.environ["http_proxy"] = http_proxy_env_var_value
+    os.environ["https_proxy"] = https_proxy_env_var_value
+    os.environ["no_proxy"] = no_proxy_env_var_value
 
     # Use the default SSL context since it leverages OpenSSL to use the correct CA bundle.
     judge_http_client = httpx.Client(verify=ssl.create_default_context())
