@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chatbot-config
+data:
+  model_name: UPDATE
+  model_endpoint: UPDATE
