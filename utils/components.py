@@ -283,17 +283,23 @@ def upload_model_op(
 def model_to_pvc_op(model: dsl.Input[dsl.Model], pvc_path: str = "/model"):
     import os
     import os.path
-    import shutil
+    import subprocess
+
+    def cp_copy(src, dst):
+        os.makedirs(dst, exist_ok=True)
+        try:
+            subprocess.run(['cp', '-r', src, dst], check=True)
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"Copy failed: {e}")
+            return False
 
     # shutil.copytree fails with "Operation Not Permitted" but doing one file at a time works for some reason.
     for f in os.listdir(model.path):
         src = os.path.join(model.path, f)
         dest = os.path.join(pvc_path, f)
         print(f"Copying {src} to {dest}")
-        if os.path.isdir(src):
-            shutil.copytree(src, dest)
-        else:
-            shutil.copy(src, dest)
+        cp_copy(src, dest)
 
 
 @dsl.container_component
