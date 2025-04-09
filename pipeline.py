@@ -169,20 +169,6 @@ def ilab_pipeline(
         k8s_storage_size: The storage size of the persistent volume used for data passing within the pipeline.
     """
     # Pre-requisites check stage
-    prerequisites_check_task = prerequisites_check_op(
-        sdg_repo_url=sdg_repo_url,
-        output_oci_registry_secret=output_oci_registry_secret,
-        eval_judge_secret=eval_judge_secret,
-        sdg_teacher_secret=sdg_teacher_secret,
-        sdg_batch_size=sdg_batch_size,
-        sdg_num_workers=sdg_num_workers,
-        output_oci_model_uri=output_oci_model_uri,
-        output_model_registry_api_url=output_model_registry_api_url,
-        output_model_name=output_model_name,
-        output_model_version=output_model_version,
-        # Must use a default of empty string for `dsl.If` to work.
-        sdg_pregenerated_uri=sdg_pregenerated_uri,
-    )
 
     # SDG stage
     sdg_input_pvc_task = CreatePVC(
@@ -191,13 +177,13 @@ def ilab_pipeline(
         size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
-    sdg_input_pvc_task.after(prerequisites_check_task)
+    # sdg_input_pvc_task.after(prerequisites_check_task)
 
     with dsl.If(sdg_pregenerated_uri == "", "run-sdg"):
         model_tokenizer_source_task = dsl.importer(
             artifact_uri=f"oci://{RUNTIME_GENERIC_IMAGE}", artifact_class=dsl.Model
         )
-        model_tokenizer_source_task.after(prerequisites_check_task)
+        # model_tokenizer_source_task.after(prerequisites_check_task)
         get_pvc_name_task = get_pvc_name_op(pvc_name=sdg_input_pvc_task.output)
         get_pvc_name_task.after(model_tokenizer_source_task)
         sdg_task = sdg_op(
@@ -214,7 +200,7 @@ def ilab_pipeline(
             tokenizer_model=model_tokenizer_source_task.output,
         )
         sdg_task.set_caching_options(False)
-        sdg_task.after(prerequisites_check_task)
+        # sdg_task.after(prerequisites_check_task)
         sdg_task.set_env_variable("HOME", "/tmp")
         sdg_task.set_env_variable("HF_HOME", "/tmp")
         mount_pvc(
@@ -248,7 +234,7 @@ def ilab_pipeline(
         get_pvc_name_task.after(sdg_source_s3_task)
         sdg_task = extract_sdg_to_pvc_op(sdg=sdg_source_s3_task.output)
         sdg_task.after(sdg_source_s3_task)
-        sdg_task.after(prerequisites_check_task)
+        # sdg_task.after(prerequisites_check_task)
         mount_pvc(
             task=sdg_task,
             pvc_name=get_pvc_name_task.output,
@@ -262,7 +248,7 @@ def ilab_pipeline(
     model_source_task = dsl.importer(
         artifact_uri=sdg_base_model, artifact_class=dsl.Model
     )
-    model_source_task.after(prerequisites_check_task)
+    # model_source_task.after(prerequisites_check_task)
 
     model_pvc_task = CreatePVC(
         pvc_name_suffix="-model-cache",
@@ -270,7 +256,7 @@ def ilab_pipeline(
         size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
-    model_pvc_task.after(prerequisites_check_task)
+    # model_pvc_task.after(prerequisites_check_task)
 
     model_to_pvc_task = model_to_pvc_op(model=model_source_task.output)
     model_to_pvc_task.set_caching_options(False)
@@ -320,7 +306,7 @@ def ilab_pipeline(
         size=k8s_storage_size,
         storage_class_name=k8s_storage_class_name,
     )
-    output_pvc_task.after(prerequisites_check_task)
+    # output_pvc_task.after(prerequisites_check_task)
 
     # Training 1
     # Using pvc_create_task.output as PyTorchJob name since dsl.PIPELINE_* global variables do not template/work in KFP v2
