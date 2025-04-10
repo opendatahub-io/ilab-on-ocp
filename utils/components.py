@@ -289,10 +289,8 @@ def model_to_pvc_op(model: dsl.Input[dsl.Model], pvc_path: str = "/model"):
         os.makedirs(dst, exist_ok=True)
         try:
             subprocess.run(['cp', '-r', src, dst], check=True)
-            return True
         except subprocess.CalledProcessError as e:
-            print(f"Copy failed: {e}")
-            return False
+            raise Exception(f"Copying '{src}' to '{dst}' failed with: {e}")
 
     # shutil.copytree fails with "Operation Not Permitted" but doing one file at a time works for some reason.
     for f in os.listdir(model.path):
