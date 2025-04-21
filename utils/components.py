@@ -283,17 +283,21 @@ def upload_model_op(
 def model_to_pvc_op(model: dsl.Input[dsl.Model], pvc_path: str = "/model"):
     import os
     import os.path
-    import shutil
+    import subprocess
+
+    def cp_copy(src, dst):
+        os.makedirs(dst, exist_ok=True)
+        try:
+            subprocess.run(['cp', '-r', src, dst], check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Copying '{src}' to '{dst}' failed with: {e}")
 
     # shutil.copytree fails with "Operation Not Permitted" but doing one file at a time works for some reason.
     for f in os.listdir(model.path):
         src = os.path.join(model.path, f)
         dest = os.path.join(pvc_path, f)
         print(f"Copying {src} to {dest}")
-        if os.path.isdir(src):
-            shutil.copytree(src, dest)
-        else:
-            shutil.copy(src, dest)
+        cp_copy(src, dest)
 
 
 @dsl.container_component
@@ -641,6 +645,7 @@ def prerequisites_check_op(
     output_model_registry_api_url: str,
     output_model_name: str,
     output_model_version: str,
+    sdg_pregenerated_uri: str = "",
 ):
     """
     Pre-validation checks for the InstructLab pipeline.
@@ -652,8 +657,9 @@ def prerequisites_check_op(
     test_judge_model_op.set_caching_options(False)
 
     ## Validate teacher information
-    test_teacher_model_op = test_model_connection(secret_name=sdg_teacher_secret)
-    test_teacher_model_op.set_caching_options(False)
+    with dsl.If(sdg_pregenerated_uri == "", "sdg-prerequisites"):
+        test_teacher_model_op = test_model_connection(secret_name=sdg_teacher_secret)
+        test_teacher_model_op.set_caching_options(False)
 
     # Validate Model Registry configuration
     test_model_registry_op = test_model_registry(
@@ -679,3 +685,24 @@ def prerequisites_check_op(
         sdg_batch_size=sdg_batch_size, sdg_num_workers=sdg_num_workers
     )
     test_sdg_params_op.set_caching_options(False)
+
+
+@dsl.component
+def extract_sdg_to_pvc_op(sdg: dsl.Input[dsl.Dataset], pvc_path: str = "/data"):
+    import os
+    import os.path
+    import tarfile
+
+    sdg_dir = os.path.join(pvc_path, "sdg")
+
+    os.makedirs(sdg_dir, exist_ok=True)
+
+    print(f"Extracting {sdg.path} to {sdg_dir}")
+    with tarfile.open(sdg.path, "r:gz") as tar:
+        tar.extractall(path=sdg_dir)
+
+
+# This is a hack to get the PVC name available to mount in a sub-DAG.
+@dsl.component
+def get_pvc_name_op(pvc_name: str) -> str:
+    return pvc_name
