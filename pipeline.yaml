@@ -25,8 +25,8 @@
 #    sdg_num_workers: int [Default: 2.0]
 #    sdg_pipeline: str [Default: '/usr/share/instructlab/sdg/pipelines/agentic']
 #    sdg_pregenerated_uri: str [Default: '']
-#    sdg_repo_branch: str
-#    sdg_repo_pr: int
+#    sdg_repo_branch: str [Default: 'main']
+#    sdg_repo_pr: int [Default: 0.0]
 #    sdg_repo_secret: str [Default: 'taxonomy-repo-secret']
 #    sdg_repo_url: str
 #    sdg_sample_size: float [Default: 1.0]
@@ -51,25 +51,6 @@
 #    train_seed: int [Default: 42.0]
 #    train_tolerations: list
 components:
-  comp-condition-1:
-    dag:
-      tasks:
-        test-model-connection-2:
-          cachingOptions: {}
-          componentRef:
-            name: comp-test-model-connection-2
-          inputs:
-            parameters:
-              secret_name:
-                componentInputParameter: pipelinechannel--sdg_teacher_secret
-          taskInfo:
-            name: test-model-connection-2
-    inputDefinitions:
-      parameters:
-        pipelinechannel--sdg_pregenerated_uri:
-          parameterType: STRING
-        pipelinechannel--sdg_teacher_secret:
-          parameterType: STRING
   comp-condition-2:
     dag:
       tasks:
@@ -644,103 +625,6 @@ components:
           defaultValue: /model
           isOptional: true
           parameterType: STRING
-  comp-prerequisites-check-op:
-    dag:
-      tasks:
-        condition-1:
-          componentRef:
-            name: comp-condition-1
-          inputs:
-            parameters:
-              pipelinechannel--sdg_pregenerated_uri:
-                componentInputParameter: sdg_pregenerated_uri
-              pipelinechannel--sdg_teacher_secret:
-                componentInputParameter: sdg_teacher_secret
-          taskInfo:
-            name: sdg-prerequisites
-          triggerPolicy:
-            condition: inputs.parameter_values['pipelinechannel--sdg_pregenerated_uri']
-              == ''
-        test-model-connection:
-          cachingOptions: {}
-          componentRef:
-            name: comp-test-model-connection
-          inputs:
-            parameters:
-              secret_name:
-                componentInputParameter: eval_judge_secret
-          taskInfo:
-            name: test-model-connection
-        test-model-registry:
-          cachingOptions: {}
-          componentRef:
-            name: comp-test-model-registry
-          inputs:
-            parameters:
-              model_name:
-                componentInputParameter: output_model_name
-              model_registry_endpoint:
-                componentInputParameter: output_model_registry_api_url
-              model_version:
-                componentInputParameter: output_model_version
-          taskInfo:
-            name: test-model-registry
-        test-oci-model:
-          cachingOptions: {}
-          componentRef:
-            name: comp-test-oci-model
-          inputs:
-            parameters:
-              output_oci_model_uri:
-                componentInputParameter: output_oci_model_uri
-              output_oci_registry_secret:
-                componentInputParameter: output_oci_registry_secret
-          taskInfo:
-            name: test-oci-model
-        test-sdg-params:
-          cachingOptions: {}
-          componentRef:
-            name: comp-test-sdg-params
-          inputs:
-            parameters:
-              sdg_batch_size:
-                componentInputParameter: sdg_batch_size
-              sdg_num_workers:
-                componentInputParameter: sdg_num_workers
-          taskInfo:
-            name: test-sdg-params
-        test-training-operator:
-          cachingOptions: {}
-          componentRef:
-            name: comp-test-training-operator
-          taskInfo:
-            name: test-training-operator
-    inputDefinitions:
-      parameters:
-        eval_judge_secret:
-          parameterType: STRING
-        output_model_name:
-          parameterType: STRING
-        output_model_registry_api_url:
-          parameterType: STRING
-        output_model_version:
-          parameterType: STRING
-        output_oci_model_uri:
-          parameterType: STRING
-        output_oci_registry_secret:
-          parameterType: STRING
-        sdg_batch_size:
-          parameterType: NUMBER_INTEGER
-        sdg_num_workers:
-          parameterType: NUMBER_INTEGER
-        sdg_pregenerated_uri:
-          defaultValue: ''
-          isOptional: true
-          parameterType: STRING
-        sdg_repo_url:
-          parameterType: STRING
-        sdg_teacher_secret:
-          parameterType: STRING
   comp-pvc-to-mmlu-branch-op:
     executorLabel: exec-pvc-to-mmlu-branch-op
     inputDefinitions:
@@ -1078,46 +962,6 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
-  comp-test-model-connection:
-    executorLabel: exec-test-model-connection
-    inputDefinitions:
-      parameters:
-        secret_name:
-          parameterType: STRING
-  comp-test-model-connection-2:
-    executorLabel: exec-test-model-connection-2
-    inputDefinitions:
-      parameters:
-        secret_name:
-          parameterType: STRING
-  comp-test-model-registry:
-    executorLabel: exec-test-model-registry
-    inputDefinitions:
-      parameters:
-        model_name:
-          parameterType: STRING
-        model_registry_endpoint:
-          parameterType: STRING
-        model_version:
-          parameterType: STRING
-  comp-test-oci-model:
-    executorLabel: exec-test-oci-model
-    inputDefinitions:
-      parameters:
-        output_oci_model_uri:
-          parameterType: STRING
-        output_oci_registry_secret:
-          parameterType: STRING
-  comp-test-sdg-params:
-    executorLabel: exec-test-sdg-params
-    inputDefinitions:
-      parameters:
-        sdg_batch_size:
-          parameterType: NUMBER_INTEGER
-        sdg_num_workers:
-          parameterType: NUMBER_INTEGER
-  comp-test-training-operator:
-    executorLabel: exec-test-training-operator
   comp-upload-model-op:
     executorLabel: exec-upload-model-op
     inputDefinitions:
@@ -2464,320 +2308,6 @@ deploymentSpec:
         - /bin/sh
         - -c
         image: registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770
-    exec-test-model-connection:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - test_model_connection
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef test_model_connection(secret_name: str):\n    import base64\n\
-          \    import ssl\n    import sys\n    import textwrap\n    import time\n\n\
-          \    import httpx\n    from kubernetes import client, config\n    from kubernetes.client.rest\
-          \ import ApiException\n\n    config.load_incluster_config()\n\n    model_endpoint\
-          \ = \"\"\n    model_name = \"\"\n    model_api_key = \"\"\n    with open(\n\
-          \        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\", \"\
-          r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
-          \n    with client.ApiClient() as api_client:\n        core_api = client.CoreV1Api(api_client)\n\
-          \n        try:\n            secret = core_api.read_namespaced_secret(secret_name,\
-          \ namespace)\n            print(f\"Reading secret {secret_name} data...\"\
-          )\n            model_api_key = base64.b64decode(secret.data[\"api_token\"\
-          ]).decode(\"utf-8\")\n            model_name = base64.b64decode(secret.data[\"\
-          model_name\"]).decode(\"utf-8\")\n            model_endpoint = base64.b64decode(secret.data[\"\
-          endpoint\"]).decode(\"utf-8\")\n        except (ApiException, KeyError)\
-          \ as e:\n            print(f\"\"\"\n            ############################################\
-          \ ERROR #####################################################\n        \
-          \    # Error reading {secret_name}. Ensure you created a secret with this\
-          \ name in namespace {namespace} and #\n            # has 'api_key', 'model_name',\
-          \ and 'endpoint' present                                               \
-          \   #\n            ########################################################################################################\n\
-          \            \"\"\")\n            sys.exit(1)\n\n    request_auth = {\"\
-          Authorization\": f\"Bearer {model_api_key}\"}\n    request_body = {\n  \
-          \      \"model\": model_name,\n        \"messages\": [{\"role\": \"user\"\
-          , \"content\": \"tell me a funny joke.\"}],\n    }\n\n    # Use the default\
-          \ SSL context since it leverages OpenSSL to use the correct CA bundle.\n\
-          \    http_client = httpx.Client(verify=ssl.create_default_context())\n\n\
-          \    # Make 3 attempts\n    for i in range(1, 3):\n        resp = http_client.post(\n\
-          \            f\"{model_endpoint}/chat/completions\",\n            headers=request_auth,\n\
-          \            json=request_body,\n        )\n        if resp.status_code\
-          \ != 200:\n            print(f\"Model Server {model_name} is not available.\
-          \ Attempt {i}/3...\")\n            time.sleep(5)\n        else:\n      \
-          \      print(\n                textwrap.dedent(f\"\"\"\\\n            ###################\
-          \ INFO #######################\n            # Model Server {model_name}\
-          \ is up and running. #\n            ################################################\\\
-          \n            \"\"\")\n            )\n            return\n    print(\n \
-          \       textwrap.dedent(f\"\"\"\\\n    ############################################\
-          \ ERROR ####################################################\n    # Model\
-          \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
-          \ to serve requests. #\n    #######################################################################################################\\\
-          \n    \"\"\")\n    )\n    sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
-    exec-test-model-connection-2:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - test_model_connection
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef test_model_connection(secret_name: str):\n    import base64\n\
-          \    import ssl\n    import sys\n    import textwrap\n    import time\n\n\
-          \    import httpx\n    from kubernetes import client, config\n    from kubernetes.client.rest\
-          \ import ApiException\n\n    config.load_incluster_config()\n\n    model_endpoint\
-          \ = \"\"\n    model_name = \"\"\n    model_api_key = \"\"\n    with open(\n\
-          \        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\", \"\
-          r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
-          \n    with client.ApiClient() as api_client:\n        core_api = client.CoreV1Api(api_client)\n\
-          \n        try:\n            secret = core_api.read_namespaced_secret(secret_name,\
-          \ namespace)\n            print(f\"Reading secret {secret_name} data...\"\
-          )\n            model_api_key = base64.b64decode(secret.data[\"api_token\"\
-          ]).decode(\"utf-8\")\n            model_name = base64.b64decode(secret.data[\"\
-          model_name\"]).decode(\"utf-8\")\n            model_endpoint = base64.b64decode(secret.data[\"\
-          endpoint\"]).decode(\"utf-8\")\n        except (ApiException, KeyError)\
-          \ as e:\n            print(f\"\"\"\n            ############################################\
-          \ ERROR #####################################################\n        \
-          \    # Error reading {secret_name}. Ensure you created a secret with this\
-          \ name in namespace {namespace} and #\n            # has 'api_key', 'model_name',\
-          \ and 'endpoint' present                                               \
-          \   #\n            ########################################################################################################\n\
-          \            \"\"\")\n            sys.exit(1)\n\n    request_auth = {\"\
-          Authorization\": f\"Bearer {model_api_key}\"}\n    request_body = {\n  \
-          \      \"model\": model_name,\n        \"messages\": [{\"role\": \"user\"\
-          , \"content\": \"tell me a funny joke.\"}],\n    }\n\n    # Use the default\
-          \ SSL context since it leverages OpenSSL to use the correct CA bundle.\n\
-          \    http_client = httpx.Client(verify=ssl.create_default_context())\n\n\
-          \    # Make 3 attempts\n    for i in range(1, 3):\n        resp = http_client.post(\n\
-          \            f\"{model_endpoint}/chat/completions\",\n            headers=request_auth,\n\
-          \            json=request_body,\n        )\n        if resp.status_code\
-          \ != 200:\n            print(f\"Model Server {model_name} is not available.\
-          \ Attempt {i}/3...\")\n            time.sleep(5)\n        else:\n      \
-          \      print(\n                textwrap.dedent(f\"\"\"\\\n            ###################\
-          \ INFO #######################\n            # Model Server {model_name}\
-          \ is up and running. #\n            ################################################\\\
-          \n            \"\"\")\n            )\n            return\n    print(\n \
-          \       textwrap.dedent(f\"\"\"\\\n    ############################################\
-          \ ERROR ####################################################\n    # Model\
-          \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
-          \ to serve requests. #\n    #######################################################################################################\\\
-          \n    \"\"\")\n    )\n    sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
-    exec-test-model-registry:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - test_model_registry
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef test_model_registry(\n    model_registry_endpoint: Optional[str],\n\
-          \    model_name: Optional[str],\n    model_version: Optional[str],\n):\n\
-          \    import sys\n    import textwrap\n    import urllib\n\n    from model_registry\
-          \ import ModelRegistry\n    from model_registry.exceptions import StoreError\n\
-          \n    if not model_registry_endpoint:\n        print(\n            textwrap.dedent(f\"\
-          \"\"\\\n        ########################### INFO ##############################\n\
-          \        # Model Registry endpoint is not provided. Skipping this step #\n\
-          \        ###############################################################\\\
-          \n        \"\"\")\n        )\n        return\n\n    try:\n        # Extract\
-          \ the port out of the URL because the ModelRegistry client expects those\
-          \ as separate arguments.\n        model_registry_endpoint = model_registry_endpoint.rstrip(\"\
-          /\")\n        model_registry_api_url_parsed = urllib.parse.urlparse(model_registry_endpoint)\n\
-          \        model_registry_api_url_port = model_registry_api_url_parsed.port\n\
-          \n        if model_registry_api_url_port:\n            model_registry_api_server_address\
-          \ = model_registry_endpoint.replace(\n                model_registry_api_url_parsed.netloc,\n\
-          \                model_registry_api_url_parsed.hostname,\n            )\n\
-          \        else:\n            if model_registry_api_url_parsed.scheme == \"\
-          http\":\n                model_registry_api_url_port = 80\n            else:\n\
-          \                model_registry_api_url_port = 443\n\n            model_registry_api_server_address\
-          \ = model_registry_endpoint\n\n        if not model_registry_api_url_parsed.scheme:\n\
-          \            model_registry_api_server_address = (\n                \"https://\"\
-          \ + model_registry_api_server_address\n            )\n\n        with open(\n\
-          \            \"/var/run/secrets/kubernetes.io/serviceaccount/token\", \"\
-          r\"\n        ) as token_file:\n            token = token_file.readline()\n\
-          \n        registry = ModelRegistry(\n            server_address=model_registry_api_server_address,\n\
-          \            port=model_registry_api_url_port,\n            author=\"InstructLab\
-          \ Pipeline\",\n            user_token=token,\n        )\n        if registry.get_model_version(model_name,\
-          \ model_version) is not None:\n            print(f\"\"\"\n            ######################################################\
-          \ ERROR ######################################################\n       \
-          \     # The version {model_version} for model {model_name} is already registered.\
-          \ You cannot overwrite a model version. #\n            ###################################################################################################################\n\
-          \            \"\"\")\n            sys.exit(1)\n    except StoreError as\
-          \ store:\n        # The model has no versions registered.\n        # Do\
-          \ nothing, just to avoid this exception to return failure\n        print(\n\
-          \            textwrap.dedent(f\"\"\"\\\n        ########### INFO ##############\n\
-          \        # Model Registry is available #\n        ###############################\\\
-          \n        \"\"\")\n        )\n        sys.exit(0)\n    except Exception\
-          \ as e:\n        print(\n            textwrap.dedent(f\"\"\"\\\n       \
-          \ ############# ERROR ###############\n        # Model Registry is not available\
-          \ #\n        ###################################\\\n        \"\"\")\n  \
-          \      )\n        raise\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
-    exec-test-oci-model:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - test_oci_model
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef test_oci_model(output_oci_model_uri: str, output_oci_registry_secret:\
-          \ str):\n    import base64\n    import json\n    import sys\n    import\
-          \ textwrap\n\n    from kubernetes import client, config\n    from kubernetes.client.rest\
-          \ import ApiException\n\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
-          , \"r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
-          \    config.load_incluster_config()\n\n    if output_oci_model_uri is None:\n\
-          \        print(\n            textwrap.dedent(f\"\"\"\\\n        ##############################\
-          \ INFO ##################################\n        # Parameter output_oci_model_uri\
-          \ not provided. Skipping this step... #\n        ######################################################################\\\
-          \n        \"\"\")\n        )\n        sys.exit(0)\n\n    # Extract from\
-          \ sdg_base_model parameter the registry name\n    registry_name = output_oci_model_uri.replace(\"\
-          oci://\", \"\").split(\"/\")[0]\n\n    with client.ApiClient() as api_client:\n\
-          \        core_api = client.CoreV1Api(api_client)\n        try:\n       \
-          \     secret = core_api.read_namespaced_secret(\n                output_oci_registry_secret,\
-          \ namespace\n            )\n            print(f\"Reading secret {output_oci_registry_secret}\
-          \ data...\")\n            if secret.type == \"kubernetes.io/dockerconfigjson\"\
-          :\n                # handle authentication if secret provided is kubernetes.io/dockerconfigjson\n\
-          \                docker_config_json = json.loads(\n                    base64.b64decode(secret.data[\"\
-          .dockerconfigjson\"]).decode(\"utf-8\")\n                )\n           \
-          \     print(\n                    textwrap.dedent(f\"\"\"\\\n          \
-          \      ############## INFO #################\n                # OCI Secret\
-          \ has auth token present #\n                #####################################\\\
-          \n                \"\"\")\n                )\n            elif secret.type\
-          \ == \"kubernetes.io/dockercfg\":\n                # handle authentication\
-          \ if secret provided is kubernetes.io/dockercfg\n                dockercfg_json\
-          \ = json.loads(\n                    base64.b64decode(secret.data[\".dockercfg\"\
-          ]).decode(\"utf-8\")\n                )\n                print(\n      \
-          \              textwrap.dedent(f\"\"\"\\\n                ##############\
-          \ INFO #################\n                # OCI Secret has auth token present\
-          \ #\n                #####################################\\\n         \
-          \       \"\"\")\n                )\n        except ApiException as e:\n\
-          \            print(\n                textwrap.dedent(f\"\"\"\\\n       \
-          \     ################################################# ERROR ###################################################################\n\
-          \            # Secret {output_oci_registry_secret} does not exist. Ensure\
-          \ you created a secret with this name in namespace {namespace} #\n     \
-          \       ###########################################################################################################################\\\
-          \n            \"\"\")\n            )\n            sys.exit(1)\n        except\
-          \ Exception as e:\n            print(\n                textwrap.dedent(f\"\
-          \"\"\\\n            ################## ERROR ##################\n      \
-          \      # Failed to check oci model and/or secret #\n            ###########################################\\\
-          \n            \"\"\")\n            )\n            raise\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
-    exec-test-sdg-params:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - test_sdg_params
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef test_sdg_params(sdg_batch_size: int, sdg_num_workers: int):\n\
-          \    import sys\n    import textwrap\n\n    if (\n        sdg_batch_size\
-          \ < 1\n        or sdg_batch_size > 4096\n        or sdg_num_workers < 2\n\
-          \        or sdg_num_workers > 10\n    ):\n        print(\n            textwrap.dedent(\n\
-          \                f\"\"\"\\\n                ##############################################\
-          \ ERROR ##############################################\n               \
-          \ # sdg_batch_size must be a value between 1-4096 and sdg_num_workers must\
-          \ be a value between 2-10  #\n                ###################################################################################################\\\
-          \n                \"\"\"\n            )\n        )\n        sys.exit(1)\n\
-          \n    print(\n        textwrap.dedent(\n            f\"\"\"\\\n        \
-          \    ############# INFO #############\n            # The SDG parameters\
-          \ seem okay #\n            ################################\\\n        \
-          \    \"\"\"\n        )\n    )\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
-    exec-test-training-operator:
-      container:
-        args:
-        - --executor_input
-        - '{{$}}'
-        - --function_to_execute
-        - test_training_operator
-        command:
-        - sh
-        - -ec
-        - 'program_path=$(mktemp -d)
-
-
-          printf "%s" "$0" > "$program_path/ephemeral_component.py"
-
-          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
-
-          '
-        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef test_training_operator():\n    import sys\n    import textwrap\n\
-          \n    from kubernetes import client, config\n    from kubernetes.client.rest\
-          \ import ApiException\n\n    with open(\n        \"/var/run/secrets/kubernetes.io/serviceaccount/namespace\"\
-          , \"r\"\n    ) as namespace_path:\n        namespace = namespace_path.readline()\n\
-          \    config.load_incluster_config()\n\n    with client.ApiClient() as api_client:\n\
-          \        api_instance = client.CustomObjectsApi(api_client)\n\n        group\
-          \ = \"kubeflow.org\"\n        version = \"v1\"\n        plural = \"pytorchjobs\"\
-          \n\n        try:\n            api_response = api_instance.list_namespaced_custom_object(\n\
-          \                group, version, namespace, plural\n            )\n    \
-          \        print(\n                textwrap.dedent(\"\"\"\\\n            #########################\
-          \ INFO ###########################\n            # Kubeflow Training Operator\
-          \ PyTorchJob CRD is available #\n            ##########################################################\\\
-          \n            \"\"\")\n            )\n        except ApiException as e:\n\
-          \            print(\n                textwrap.dedent(\"\"\"\\\n        \
-          \    #################################################### ERROR ######################################################################\n\
-          \            # Kubeflow Training Operator PyTorchJob CRD is unavailable.\
-          \ Ensure your OpenShift AI installation has Training Operator enabled #\n\
-          \            #################################################################################################################################\\\
-          \n            \"\"\")\n            )\n            sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
     exec-upload-model-op:
       container:
         args:
@@ -2923,7 +2453,6 @@ root:
           name: comp-condition-branches-1
         dependentTasks:
         - createpvc
-        - prerequisites-check-op
         inputs:
           parameters:
             pipelinechannel--createpvc-name:
@@ -2959,8 +2488,6 @@ root:
           enableCache: true
         componentRef:
           name: comp-createpvc
-        dependentTasks:
-        - prerequisites-check-op
         inputs:
           parameters:
             access_modes:
@@ -2981,8 +2508,6 @@ root:
           enableCache: true
         componentRef:
           name: comp-createpvc-2
-        dependentTasks:
-        - prerequisites-check-op
         inputs:
           parameters:
             access_modes:
@@ -3003,8 +2528,6 @@ root:
           enableCache: true
         componentRef:
           name: comp-createpvc-3
-        dependentTasks:
-        - prerequisites-check-op
         inputs:
           parameters:
             access_modes:
@@ -3101,8 +2624,6 @@ root:
           enableCache: true
         componentRef:
           name: comp-importer-3
-        dependentTasks:
-        - prerequisites-check-op
         inputs:
           parameters:
             uri:
@@ -3133,37 +2654,6 @@ root:
                 producerTask: importer-3
         taskInfo:
           name: model-to-pvc-op
-      prerequisites-check-op:
-        cachingOptions:
-          enableCache: true
-        componentRef:
-          name: comp-prerequisites-check-op
-        inputs:
-          parameters:
-            eval_judge_secret:
-              componentInputParameter: eval_judge_secret
-            output_model_name:
-              componentInputParameter: output_model_name
-            output_model_registry_api_url:
-              componentInputParameter: output_model_registry_api_url
-            output_model_version:
-              componentInputParameter: output_model_version
-            output_oci_model_uri:
-              componentInputParameter: output_oci_model_uri
-            output_oci_registry_secret:
-              componentInputParameter: output_oci_registry_secret
-            sdg_batch_size:
-              componentInputParameter: sdg_batch_size
-            sdg_num_workers:
-              componentInputParameter: sdg_num_workers
-            sdg_pregenerated_uri:
-              componentInputParameter: sdg_pregenerated_uri
-            sdg_repo_url:
-              componentInputParameter: sdg_repo_url
-            sdg_teacher_secret:
-              componentInputParameter: sdg_teacher_secret
-        taskInfo:
-          name: prerequisites-check-op
       pvc-to-mmlu-branch-op:
         cachingOptions: {}
         componentRef:
