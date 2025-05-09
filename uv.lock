@@ -463,7 +463,7 @@ requires-dist = [
     { name = "kfp-kubernetes", specifier = "==1.5.0" },
     { name = "kubeflow-training", specifier = "==1.8.1" },
     { name = "kubernetes", specifier = "==30.1.0" },
-    { name = "model-registry", specifier = "==0.2.14" },
+    { name = "model-registry", specifier = "==0.2.17" },
     { name = "olot", specifier = "==0.1.2" },
 ]
 
@@ -567,7 +567,7 @@ wheels = [
 
 [[package]]
 name = "model-registry"
-version = "0.2.14"
+version = "0.2.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -578,9 +578,9 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9a/aa/26fed84ef3bf04ea9c2f127f6455561c06c8c97a81d3093f982cd01e433f/model_registry-0.2.14.tar.gz", hash = "sha256:5db645228ea7c4f4f7a89acd146a566cd6c14dbac3ae742ac54b7d058ae11273", size = 60185 }
+sdist = { url = "https://files.pythonhosted.org/packages/43/25/d8aa26a7b25dd771959954be7b7363fb533037dc47c364502730016613ef/model_registry-0.2.17.tar.gz", hash = "sha256:ea4753fdc74a8f296fa73bf526aac927ba91316eb04322b0fe371f462c530d7d", size = 68279 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/5c/fdb20551280f16d0a09eedee6670f7c667ea40672f03710988a353cfc559/model_registry-0.2.14-py3-none-any.whl", hash = "sha256:eff7dd424839b343786c5de2abae4adcd626f9c402d69f5cf3e9891616cadcf9", size = 139038 },
+    { url = "https://files.pythonhosted.org/packages/01/d1/55dca59dc5821ab3c7314ee50633903201c522ea39cb9e1bc22898e794bc/model_registry-0.2.17-py3-none-any.whl", hash = "sha256:4fa0e2a2736b0aae8eb829fed75523670eb517d17dcc403d4265a1b5f82e0c1e", size = 146682 },
 ]
 
 [[package]]

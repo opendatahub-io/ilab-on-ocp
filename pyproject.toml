@@ -10,7 +10,7 @@ dependencies = [
     "kfp-kubernetes==1.5.0",
     "kfp==2.13.0",
     "kubernetes==30.1.0",
-    "model-registry==0.2.14",
+    "model-registry==0.2.17",
     "olot==0.1.2",
     "kubeflow-training==1.8.1"
 ]

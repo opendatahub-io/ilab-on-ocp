@@ -347,9 +347,9 @@ google-api-core==2.24.2 \
     #   google-cloud-core
     #   google-cloud-storage
     #   kfp
-google-auth==2.39.0 \
-    --hash=sha256:0150b6711e97fb9f52fe599f55648950cc4540015565d8fbb31be2ad6e1548a2 \
-    --hash=sha256:73222d43cdc35a3aeacbfdcaf73142a97839f10de930550d89ebfe1d0a00cde7
+google-auth==2.40.1 \
+    --hash=sha256:58f0e8416a9814c1d86c9b7f6acf6816b51aba167b2c76821965271bac275540 \
+    --hash=sha256:ed4cae4f5c46b41bae1d19c036e06f6c371926e97b19e816fc854eff811974ee
     # via
     #   google-api-core
     #   google-cloud-core
@@ -455,9 +455,9 @@ kubernetes==30.1.0 \
     #   ilab-on-ocp (pyproject.toml)
     #   kfp
     #   kubeflow-training
-model-registry==0.2.14 \
-    --hash=sha256:5db645228ea7c4f4f7a89acd146a566cd6c14dbac3ae742ac54b7d058ae11273 \
-    --hash=sha256:eff7dd424839b343786c5de2abae4adcd626f9c402d69f5cf3e9891616cadcf9
+model-registry==0.2.17 \
+    --hash=sha256:4fa0e2a2736b0aae8eb829fed75523670eb517d17dcc403d4265a1b5f82e0c1e \
+    --hash=sha256:ea4753fdc74a8f296fa73bf526aac927ba91316eb04322b0fe371f462c530d7d
     # via ilab-on-ocp (pyproject.toml)
 multidict==6.4.3 \
     --hash=sha256:032efeab3049e37eef2ff91271884303becc9e54d740b492a93b7e7266e23756 \
@@ -912,9 +912,9 @@ rsa==4.9.1 \
     --hash=sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762 \
     --hash=sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75
     # via google-auth
-setuptools==80.1.0 \
-    --hash=sha256:2e308396e1d83de287ada2c2fd6e64286008fe6aca5008e0b6a8cb0e2c86eedd \
-    --hash=sha256:ea0e7655c05b74819f82e76e11a85b31779fee7c4969e82f72bab0664e8317e4
+setuptools==80.3.1 \
+    --hash=sha256:31e2c58dbb67c99c289f51c16d899afedae292b978f8051efaf6262d8212f927 \
+    --hash=sha256:ea8e00d7992054c4c592aeb892f6ad51fe1b4d90cc6947cc45c45717c40ec537
     # via kubeflow-training
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
