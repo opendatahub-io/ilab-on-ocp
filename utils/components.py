@@ -232,11 +232,11 @@ def upload_model_op(
                 uri=model.uri,
                 model_format_name="vLLM",
                 model_format_version=None,
-                metadata={
-                    "_registeredFromPipelineRunId": run_id,
-                    "_registeredFromPipelineRunName": run_name,
-                    "_registeredFromPipelineProject": pod_namespace,
-                },
+                model_source_id=run_id,
+                model_source_name=run_name,
+                model_source_class="pipelinerun",
+                model_source_kind="kfp",
+                model_source_group=pod_namespace,
             )
             break
         except Exception as e:

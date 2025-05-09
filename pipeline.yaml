@@ -978,7 +978,7 @@ deploymentSpec:
     exec-importer:
       importer:
         artifactUri:
-          constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+          constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
         typeSchema:
           schemaTitle: system.Model
           schemaVersion: 0.0.1
@@ -1024,7 +1024,7 @@ deploymentSpec:
           \ f)\n        print(f\"Copying {src} to {dest}\")\n        if os.path.isdir(src):\n\
           \            shutil.copytree(src, dest)\n        else:\n            shutil.copy(src,\
           \ dest)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
     exec-pvc-to-mmlu-branch-op:
       container:
         args:
@@ -2143,7 +2143,7 @@ deploymentSpec:
           \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
           \ to serve requests. #\n    #######################################################################################################\\\
           \n    \"\"\")\n    )\n    sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
     exec-test-model-connection-2:
       container:
         args:
@@ -2203,7 +2203,7 @@ deploymentSpec:
           \ Server {model_name} is unavailable. Ensure the model is up and it is ready\
           \ to serve requests. #\n    #######################################################################################################\\\
           \n    \"\"\")\n    )\n    sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
     exec-test-model-registry:
       container:
         args:
@@ -2264,7 +2264,7 @@ deploymentSpec:
           \ ############# ERROR ###############\n        # Model Registry is not available\
           \ #\n        ###################################\\\n        \"\"\")\n  \
           \      )\n        raise\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
     exec-test-oci-model:
       container:
         args:
@@ -2325,7 +2325,7 @@ deploymentSpec:
           \"\"\\\n            ################## ERROR ##################\n      \
           \      # Failed to check oci model and/or secret #\n            ###########################################\\\
           \n            \"\"\")\n            )\n            raise\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
     exec-test-sdg-params:
       container:
         args:
@@ -2358,7 +2358,7 @@ deploymentSpec:
           \    ############# INFO #############\n            # The SDG parameters\
           \ seem okay #\n            ################################\\\n        \
           \    \"\"\"\n        )\n    )\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
     exec-test-training-operator:
       container:
         args:
@@ -2397,7 +2397,7 @@ deploymentSpec:
           \ Ensure your OpenShift AI installation has Training Operator enabled #\n\
           \            #################################################################################################################################\\\
           \n            \"\"\")\n            )\n            sys.exit(1)\n\n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
     exec-upload-model-op:
       container:
         args:
@@ -2506,22 +2506,21 @@ deploymentSpec:
           \ )\n\n            registered_model = registry.register_model(\n       \
           \         name=output_model_name,\n                version=output_model_version,\n\
           \                uri=model.uri,\n                model_format_name=\"vLLM\"\
-          ,\n                model_format_version=None,\n                metadata={\n\
-          \                    \"_registeredFromPipelineRunId\": run_id,\n       \
-          \             \"_registeredFromPipelineRunName\": run_name,\n          \
-          \          \"_registeredFromPipelineProject\": pod_namespace,\n        \
-          \        },\n            )\n            break\n        except Exception\
-          \ as e:\n            if tries >= 3:\n                raise\n\n         \
-          \   print(f\"Failed to register the model on attempt {tries}/3: {e}\")\n\
-          \            time.sleep(1)\n\n    # Get the model version ID to add as metadata\
-          \ on the output model artifact\n    tries = 0\n\n    while True:\n     \
-          \   try:\n            tries += 1\n            model_version_id = registry.get_model_version(\n\
-          \                output_model_name, output_model_version\n            ).id\n\
-          \            break\n        except Exception as e:\n            if tries\
-          \ >= 3:\n                raise\n\n            print(f\"Failed to get the\
-          \ model ID on attempt {tries}/3: {e}\")\n            time.sleep(1)\n\n \
-          \   # If output_model_registry_name is not provided, parse it from the URL.\n\
-          \    if not output_model_registry_name:\n        output_model_registry_name\
+          ,\n                model_format_version=None,\n                model_source_id=run_id,\n\
+          \                model_source_name=run_name,\n                model_source_class=\"\
+          pipelinerun\",\n                model_source_kind=\"kfp\",\n           \
+          \     model_source_group=pod_namespace,\n            )\n            break\n\
+          \        except Exception as e:\n            if tries >= 3:\n          \
+          \      raise\n\n            print(f\"Failed to register the model on attempt\
+          \ {tries}/3: {e}\")\n            time.sleep(1)\n\n    # Get the model version\
+          \ ID to add as metadata on the output model artifact\n    tries = 0\n\n\
+          \    while True:\n        try:\n            tries += 1\n            model_version_id\
+          \ = registry.get_model_version(\n                output_model_name, output_model_version\n\
+          \            ).id\n            break\n        except Exception as e:\n \
+          \           if tries >= 3:\n                raise\n\n            print(f\"\
+          Failed to get the model ID on attempt {tries}/3: {e}\")\n            time.sleep(1)\n\
+          \n    # If output_model_registry_name is not provided, parse it from the\
+          \ URL.\n    if not output_model_registry_name:\n        output_model_registry_name\
           \ = urllib.parse.urlparse(\n            output_model_registry_api_url\n\
           \        ).hostname.split(\".\")[0]\n\n        if output_model_registry_name.endswith(\"\
           -rest\"):\n            output_model_registry_name = output_model_registry_name[:\
@@ -2530,7 +2529,7 @@ deploymentSpec:
           modelVersionName\"] = output_model_version\n    model.metadata[\"modelVersionId\"\
           ] = model_version_id\n    model.metadata[\"registeredModelId\"] = registered_model.id\n\
           \n"
-        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+        image: quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
 pipelineInfo:
   description: InstructLab pipeline
   displayName: InstructLab
@@ -2691,7 +2690,7 @@ root:
           parameters:
             uri:
               runtimeValue:
-                constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d
+                constant: oci://quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779
         taskInfo:
           name: importer
       importer-2:

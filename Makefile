@@ -4,7 +4,7 @@ PYTHON_IMAGE          ?= "quay.io/modh/odh-generic-data-science-notebook@sha256:
 TOOLBOX_IMAGE         ?= "registry.redhat.io/ubi9/toolbox@sha256:da31dee8904a535d12689346e65e5b00d11a6179abf1fa69b548dbd755fa2770"                     # v9.5
 OC_IMAGE              ?= "registry.redhat.io/openshift4/ose-cli@sha256:08bdbfae224dd39c81689ee73c183619d6b41eba7ac04f0dce7ee79f50531d0b"               # v4.15.0
 RHELAI_IMAGE          ?= "registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68" # 1.4.1-1739870750
-RUNTIME_GENERIC_IMAGE ?= "quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:f53e53a39b1a88c3a530e87ded473ba2648b8d8586ec9e31a4484e9bafb3059d"    # main-abe4fd9
+RUNTIME_GENERIC_IMAGE ?= "quay.io/opendatahub/ds-pipelines-runtime-generic@sha256:02445dbd6919b4a7954c34cd4625220b58985b347103454ffe3c820795a91779"    # main-bc6eba4
 
 pipeline:
 	PYTHON_IMAGE=$(PYTHON_IMAGE) \
