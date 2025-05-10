@@ -459,7 +459,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.4" },
     { name = "kfp", url = "https://github.com/kubeflow/pipelines/archive/26946059963051cce5a8a70270ebc6bc9f7e2bd6.tar.gz", subdirectory = "sdk/python" },
     { name = "kfp-kubernetes", specifier = ">=1.4.0" },
-    { name = "kubeflow-training", specifier = "==1.8.1" },
+    { name = "kubeflow-training", specifier = "==1.9.2" },
     { name = "kubernetes", specifier = "==30.1.0" },
     { name = "model-registry", specifier = "==0.2.14" },
     { name = "olot", specifier = "==0.1.2" },
@@ -557,7 +557,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/47/95/767b6f1ef01c03d10
 
 [[package]]
 name = "kubeflow-training"
-version = "1.8.1"
+version = "1.9.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -567,9 +567,9 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/e3/6352c5d2a7a22bb331958dd568c45f758d81c9c0a7c9d1e8933a71b4b04e/kubeflow-training-1.8.1.tar.gz", hash = "sha256:137cdeb5843f90e637fd53df988cbf6894501900c8f372e7de75a6a1302fe8f5", size = 61498 }
+sdist = { url = "https://files.pythonhosted.org/packages/93/b1/ab9e9ccc31e8a4154fc9f598e1ee2295e731d6fcd7b840e18f69db60b94a/kubeflow-training-1.9.2.tar.gz", hash = "sha256:fdba63093c38eb7a5c56c3cfd30ed9f57367330af9b84bc318b56bca1d307da7", size = 64313 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/3c/8545963d2defd02868fc52fc21e4521947d3202abb7f985799b122247dbe/kubeflow_training-1.8.1-py3-none-any.whl", hash = "sha256:ef36df107b850c6e6587dc1b9b7a92aaa7b6cf28e9d73b5f1eb87dd84e80222d", size = 133880 },
+    { url = "https://files.pythonhosted.org/packages/a1/4f/d8b14b0c23b4f07c18ae4d409340247616365135b3b09e32284a6b513c3b/kubeflow_training-1.9.2-py3-none-any.whl", hash = "sha256:f99dd637d915f686331597f1c983ee133f61e69fa470c179d9d041912e82834d", size = 111871 },
 ]
 
 [[package]]

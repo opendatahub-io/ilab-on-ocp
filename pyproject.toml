@@ -16,5 +16,5 @@ dependencies = [
     "olot==0.1.2",
     "pre-commit>=4.0.1",
     "ruff>=0.8.2",
-    "kubeflow-training==1.8.1"
+    "kubeflow-training==1.9.2"
 ]
