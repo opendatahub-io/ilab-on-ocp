@@ -72,7 +72,7 @@ poetry-core==2.1.1
     #   rsa
 semantic-version==2.10.0
     # via setuptools-rust
-setuptools-rust==1.11.0
+setuptools-rust==1.11.1
     # via maturin
 setuptools-scm==7.1.0
     # via python-dateutil
