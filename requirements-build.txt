@@ -13,7 +13,7 @@ expandvars==1.0.0
     #   frozenlist
     #   propcache
     #   yarl
-flit-core==3.11.0
+flit-core==3.12.0
     # via
     #   click
     #   idna
