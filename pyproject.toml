@@ -12,7 +12,7 @@ dependencies = [
     # Using the KFP SDK with a bugfix
     "kfp@https://github.com/kubeflow/pipelines/archive/26946059963051cce5a8a70270ebc6bc9f7e2bd6.tar.gz#egg=kfp&subdirectory=sdk/python",
     "kubernetes==30.1.0",
-    "model-registry==0.2.14",
+    "model-registry==0.2.17.post1",
     "olot==0.1.2",
     "pre-commit>=4.0.1",
     "ruff>=0.8.2",
