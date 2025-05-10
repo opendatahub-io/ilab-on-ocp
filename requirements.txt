@@ -448,8 +448,8 @@ kfp-kubernetes==1.4.0 \
 kfp-pipeline-spec==0.6.0 \
     --hash=sha256:9e319b62eaa54c6790a96f796d34f071458c9cae9585c662629eb090688555a7
     # via kfp
-kfp-server-api==2.4.0 \
-    --hash=sha256:9d71ce49fc6757af14b052cc47e4cb531cb4e4584c2ea76ec02b9197ee9a674f
+kfp-server-api==2.5.0 \
+    --hash=sha256:bfca69e21d1dfe3bb4bb8a131166b3a0d44fefe90d7fd95a2409e56115068fd3
     # via kfp
 kubeflow-training==1.8.1 \
     --hash=sha256:137cdeb5843f90e637fd53df988cbf6894501900c8f372e7de75a6a1302fe8f5 \
