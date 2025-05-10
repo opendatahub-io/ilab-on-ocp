@@ -442,8 +442,8 @@ kfp @ https://github.com/kubeflow/pipelines/archive/26946059963051cce5a8a70270eb
     # via
     #   ilab-on-ocp (pyproject.toml)
     #   kfp-kubernetes
-kfp-kubernetes==1.4.0 \
-    --hash=sha256:bbb2ce9230be2cbf8b344897a518cc8debe008e153277675b16fd4634e81f358
+kfp-kubernetes==1.5.0 \
+    --hash=sha256:84c2080f25934d21484f7a48eadbfd1f01f213fde0feb77f65346dbc544c855f
     # via ilab-on-ocp (pyproject.toml)
 kfp-pipeline-spec==0.6.0 \
     --hash=sha256:9e319b62eaa54c6790a96f796d34f071458c9cae9585c662629eb090688555a7
