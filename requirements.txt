@@ -1042,9 +1042,9 @@ urllib3==1.26.20 \
     #   kubeflow-training
     #   kubernetes
     #   requests
-virtualenv==20.29.3 \
-    --hash=sha256:3e3d00f5807e83b234dfb6122bf37cfadf4be216c53a49ac059d02414f819170 \
-    --hash=sha256:95e39403fcf3940ac45bc717597dba16110b74506131845d9b687d5e73d947ac
+virtualenv==20.31.2 \
+    --hash=sha256:36efd0d9650ee985f0cad72065001e66d49a6f24eb44d98980f630686243cf11 \
+    --hash=sha256:e10c0a9d02835e592521be48b332b6caee6887f332c111aa79a09b9e79efc2af
     # via pre-commit
 websocket-client==1.8.0 \
     --hash=sha256:17b44cc997f5c498e809b22cdf2d9c7a9e71c02c8cc2b6c56e7c2d1239bfa526 \
