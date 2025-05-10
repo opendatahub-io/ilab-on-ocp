@@ -525,9 +525,9 @@ markupsafe==3.0.2 \
     --hash=sha256:f8b3d067f2e40fe93e1ccdd6b2e1d16c43140e76f02fb1319a05cf2b79d99430 \
     --hash=sha256:fcabf5ff6eea076f859677f5f0b6b5c1a51e70a376b0579e0eadef8db48c6b50
     # via jinja2
-model-registry==0.2.14 \
-    --hash=sha256:5db645228ea7c4f4f7a89acd146a566cd6c14dbac3ae742ac54b7d058ae11273 \
-    --hash=sha256:eff7dd424839b343786c5de2abae4adcd626f9c402d69f5cf3e9891616cadcf9
+model-registry==0.2.17.post1 \
+    --hash=sha256:58cc8834287bd51493d097c8b6946c974eca53d85ba748dc33b31f66d264928a \
+    --hash=sha256:e66c7c12eab1b93f1531088ce82ad59827bfb23d7ce98c713334d0bab18e37c0
     # via ilab-on-ocp (pyproject.toml)
 multidict==6.2.0 \
     --hash=sha256:0085b0afb2446e57050140240a8595846ed64d1cbd26cef936bfab3192c673b8 \
