@@ -462,7 +462,7 @@ requires-dist = [
     { name = "kubeflow-training", specifier = "==1.8.1" },
     { name = "kubernetes", specifier = "==30.1.0" },
     { name = "model-registry", specifier = "==0.2.14" },
-    { name = "olot", specifier = "==0.1.2" },
+    { name = "olot", specifier = "==0.1.7" },
     { name = "pre-commit", specifier = ">=4.0.1" },
     { name = "ruff", specifier = ">=0.8.2" },
 ]
@@ -717,15 +717,15 @@ wheels = [
 
 [[package]]
 name = "olot"
-version = "0.1.2"
+version = "0.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e7/20/9174576a3a607d8f0f0b9428e5c4ae23bc10c928f3cff13665bdecdc7af9/olot-0.1.2.tar.gz", hash = "sha256:cdd1a1da751ef29dce002e94a681411fdeb956c32878eba4803230ca1550f653", size = 15696 }
+sdist = { url = "https://files.pythonhosted.org/packages/46/e7/0702d4d1400174ea046253b56cdc653b1969867880dbffb120bcb303f64d/olot-0.1.7.tar.gz", hash = "sha256:c94656d286ec02d6a6e31567901af064b0c9aa66fd2bc4b542bc96e1de8b1f76", size = 18858 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/4c/a56f5444082cc84f7fe91e4c5753037d532b58a37af1118c7c013216f7bf/olot-0.1.2-py3-none-any.whl", hash = "sha256:e8b02c8a2e74a1b2d642c48bc0ded4236fadce6636faa63c6a736a14ef208893", size = 20937 },
+    { url = "https://files.pythonhosted.org/packages/88/12/43264a7c122124ee81620707cc6cb53529ebe539eb218b7dd8069c216eb8/olot-0.1.7-py3-none-any.whl", hash = "sha256:38f65a09e9cb22acfb2325b0f9853f98b866a9203f4d5efd67917fe466c0afc5", size = 23814 },
 ]
 
 [[package]]
