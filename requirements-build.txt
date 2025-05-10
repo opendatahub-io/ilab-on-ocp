@@ -63,7 +63,7 @@ pathspec==0.12.1
     # via hatchling
 pluggy==1.5.0
     # via hatchling
-poetry-core==2.1.1
+poetry-core==2.1.3
     # via
     #   aiohappyeyeballs
     #   docstring-parser
