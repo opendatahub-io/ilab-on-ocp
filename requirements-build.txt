@@ -47,7 +47,7 @@ hatchling==1.27.0
     #   platformdirs
     #   pydantic
     #   virtualenv
-maturin==1.8.3
+maturin==1.8.4
     # via
     #   pydantic-core
     #   ruff
