@@ -270,7 +270,7 @@ def pytorch_job_launcher_op(
             name="shm-volume",
             empty_dir=models.V1EmptyDirVolumeSource(
                 medium="Memory",
-                size_limit="20Gi"
+                size_limit="40Gi"
             ),
         ),
         models.V1Volume(
