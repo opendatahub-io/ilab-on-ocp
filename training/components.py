@@ -22,6 +22,9 @@ def data_processing_op(
 ):
     import os
 
+    # It tries to write to $HOME/.triton and the home path is not writable by default
+    os.environ["HOME"] = "/tmp"
+
     import instructlab.training.data_process as dp
     from instructlab.training import (
         DataProcessArgs,

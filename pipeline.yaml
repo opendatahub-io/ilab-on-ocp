@@ -888,12 +888,23 @@ deploymentSpec:
           \ *\n\ndef data_processing_op(\n    model_path: str = \"/model\",\n    sdg_path:\
           \ str = \"/data/sdg\",\n    skills_path: str = \"/data/skills\",\n    knowledge_path:\
           \ str = \"/data/knowledge\",\n    max_seq_len: Optional[int] = 4096,\n \
-          \   max_batch_len: Optional[int] = 20000,\n):\n    import os\n\n    import\
-          \ instructlab.training.data_process as dp\n    from instructlab.training\
-          \ import (\n        DataProcessArgs,\n        TrainingArgs,\n    )\n\n \
-          \   # define training-specific arguments\n    skill_training_args = TrainingArgs(\n\
-          \        # define data-specific arguments\n        model_path=model_path,\n\
-          \        data_path=f\"{sdg_path}/skills_train_msgs*.jsonl\",\n        data_output_dir=skills_path,\n\
+          \   max_batch_len: Optional[int] = 20000,\n):\n    import os\n\n    # It\
+          \ tries to write to $HOME/.triton and the home path is not writable by default\n\
+          \    os.environ[\"HOME\"] = \"/tmp\"\n\n    import instructlab.training.data_process\
+          \ as dp\n    from instructlab.training import (\n        DataProcessArgs,\n\
+          \        TrainingArgs,\n    )\n\n    # define training-specific arguments\n\
+          \    skill_training_args = TrainingArgs(\n        # define data-specific\
+          \ arguments\n        model_path=model_path,\n        data_path=f\"{sdg_path}/skills_train_msgs*.jsonl\"\
+          ,\n        data_output_dir=skills_path,\n        # define model-trianing\
+          \ parameters\n        max_seq_len=max_seq_len,\n        max_batch_len=max_batch_len,\n\
+          \        # XXX(shanand): We don't need the following arguments\n       \
+          \ # for data processing. Added them for now to avoid\n        # Pydantic\
+          \ validation errors for TrainingArgs\n        ckpt_output_dir=\"data/saved_checkpoints\"\
+          ,\n        num_epochs=2,\n        effective_batch_size=3840,\n        save_samples=0,\n\
+          \        learning_rate=2e-6,\n        warmup_steps=800,\n        is_padding_free=True,\n\
+          \    )\n\n    knowledge_training_args = TrainingArgs(\n        # define\
+          \ data-specific arguments\n        model_path=model_path,\n        data_path=f\"\
+          {sdg_path}/knowledge_train_msgs*.jsonl\",\n        data_output_dir=knowledge_path,\n\
           \        # define model-trianing parameters\n        max_seq_len=max_seq_len,\n\
           \        max_batch_len=max_batch_len,\n        # XXX(shanand): We don't\
           \ need the following arguments\n        # for data processing. Added them\
@@ -901,38 +912,28 @@ deploymentSpec:
           \        ckpt_output_dir=\"data/saved_checkpoints\",\n        num_epochs=2,\n\
           \        effective_batch_size=3840,\n        save_samples=0,\n        learning_rate=2e-6,\n\
           \        warmup_steps=800,\n        is_padding_free=True,\n    )\n\n   \
-          \ knowledge_training_args = TrainingArgs(\n        # define data-specific\
-          \ arguments\n        model_path=model_path,\n        data_path=f\"{sdg_path}/knowledge_train_msgs*.jsonl\"\
-          ,\n        data_output_dir=knowledge_path,\n        # define model-trianing\
-          \ parameters\n        max_seq_len=max_seq_len,\n        max_batch_len=max_batch_len,\n\
-          \        # XXX(shanand): We don't need the following arguments\n       \
-          \ # for data processing. Added them for now to avoid\n        # Pydantic\
-          \ validation errors for TrainingArgs\n        ckpt_output_dir=\"data/saved_checkpoints\"\
-          ,\n        num_epochs=2,\n        effective_batch_size=3840,\n        save_samples=0,\n\
-          \        learning_rate=2e-6,\n        warmup_steps=800,\n        is_padding_free=True,\n\
-          \    )\n\n    def data_processing(train_args: TrainingArgs) -> None:\n \
-          \       # early validation logic here\n        if train_args.max_batch_len\
-          \ < train_args.max_seq_len:\n            raise ValueError(\n           \
-          \     f\"the 'max_batch_len' cannot be less than 'max_seq_len': {train_args.max_batch_len=}\
-          \ < {train_args.max_seq_len=}\"\n            )\n\n            # process\
-          \ the training data\n        if not os.path.exists(train_args.data_output_dir):\n\
-          \            os.makedirs(train_args.data_output_dir, exist_ok=True)\n  \
-          \      dp.main(\n            DataProcessArgs(\n                # XXX(osilkin):\
-          \ make a decision here, either:\n                #   1. the CLI is fully\
-          \ responsible for managing where the data is written\n                #\
-          \   2. we never cache it and simply write it to a tmp file every time.\n\
-          \                #\n                # An important reason for why #1 would\
-          \ be preferable is in the case of OpenShift/SELinux\n                # where\
-          \ the user has a defined place for new temporary data to be written.\n \
-          \               data_output_path=train_args.data_output_dir,\n         \
-          \       model_path=train_args.model_path,\n                data_path=train_args.data_path,\n\
+          \ def data_processing(train_args: TrainingArgs) -> None:\n        # early\
+          \ validation logic here\n        if train_args.max_batch_len < train_args.max_seq_len:\n\
+          \            raise ValueError(\n                f\"the 'max_batch_len' cannot\
+          \ be less than 'max_seq_len': {train_args.max_batch_len=} < {train_args.max_seq_len=}\"\
+          \n            )\n\n            # process the training data\n        if not\
+          \ os.path.exists(train_args.data_output_dir):\n            os.makedirs(train_args.data_output_dir,\
+          \ exist_ok=True)\n        dp.main(\n            DataProcessArgs(\n     \
+          \           # XXX(osilkin): make a decision here, either:\n            \
+          \    #   1. the CLI is fully responsible for managing where the data is\
+          \ written\n                #   2. we never cache it and simply write it\
+          \ to a tmp file every time.\n                #\n                # An important\
+          \ reason for why #1 would be preferable is in the case of OpenShift/SELinux\n\
+          \                # where the user has a defined place for new temporary\
+          \ data to be written.\n                data_output_path=train_args.data_output_dir,\n\
+          \                model_path=train_args.model_path,\n                data_path=train_args.data_path,\n\
           \                max_seq_len=train_args.max_seq_len,\n                chat_tmpl_path=train_args.chat_tmpl_path,\n\
           \            )\n        )\n\n    data_processing(train_args=skill_training_args)\n\
           \    data_processing(train_args=knowledge_training_args)\n\n"
         env:
         - name: XDG_CACHE_HOME
           value: /tmp
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:3e6eb035c69b204746a44b3a58b2751c20050cfb6af2ba7989ba327809f87c0b
     exec-deletepvc:
       container:
         image: argostub/deletepvc
@@ -1609,7 +1610,7 @@ deploymentSpec:
           value: /tmp
         - name: HF_HOME
           value: /tmp
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:3e6eb035c69b204746a44b3a58b2751c20050cfb6af2ba7989ba327809f87c0b
         resources:
           accelerator:
             count: '1'
@@ -1762,7 +1763,7 @@ deploymentSpec:
           value: /tmp
         - name: HF_HOME
           value: /tmp
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:3e6eb035c69b204746a44b3a58b2751c20050cfb6af2ba7989ba327809f87c0b
         resources:
           accelerator:
             count: '1'
@@ -2059,7 +2060,7 @@ deploymentSpec:
           value: /tmp
         - name: HF_HOME
           value: /tmp
-        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
+        image: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:3e6eb035c69b204746a44b3a58b2751c20050cfb6af2ba7989ba327809f87c0b
     exec-sdg-to-artifact-op:
       container:
         args:
@@ -2815,7 +2816,7 @@ root:
           parameters:
             base_image:
               runtimeValue:
-                constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
+                constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:3e6eb035c69b204746a44b3a58b2751c20050cfb6af2ba7989ba327809f87c0b
             cpu_per_worker:
               componentInputParameter: train_cpu_per_worker
             effective_batch_size:
@@ -2878,7 +2879,7 @@ root:
           parameters:
             base_image:
               runtimeValue:
-                constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:c656c74338e3d59bf265e4b2fa9c01a69c8212992fa6d4511aef52a441506e68
+                constant: registry.redhat.io/rhelai1/instructlab-nvidia-rhel9@sha256:3e6eb035c69b204746a44b3a58b2751c20050cfb6af2ba7989ba327809f87c0b
             cpu_per_worker:
               componentInputParameter: train_cpu_per_worker
             effective_batch_size:
