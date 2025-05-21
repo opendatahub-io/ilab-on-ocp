@@ -270,7 +270,7 @@ def pytorch_job_launcher_op(
             name="shm-volume",
             empty_dir=models.V1EmptyDirVolumeSource(
                 medium="Memory",
-                size_limit="40Gi"
+                size_limit="20Gi"
             ),
         ),
         models.V1Volume(
@@ -296,6 +296,8 @@ def pytorch_job_launcher_op(
         ),
         models.V1VolumeMount(mount_path="/input_model", name="model", read_only=True),
         models.V1VolumeMount(mount_path="/output", name="output", read_only=True),
+        models.V1VolumeMount(mount_path="/dev/shm", name="shm-volume"),
+        models.V1VolumeMount(mount_path="/mnt/shared", name="shared-volume"),
     ]
 
     # Set env variables
