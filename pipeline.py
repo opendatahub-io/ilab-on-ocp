@@ -207,8 +207,13 @@ def ilab_pipeline(
         taxonomy_repo_secret=sdg_repo_secret,
         tokenizer_model=model_tokenizer_source_task.output,
     )
+    sdg_task.set_caching_options(False)
     sdg_task.set_env_variable("HOME", "/tmp")
     sdg_task.set_env_variable("HF_HOME", "/tmp")
+    sdg_task.set_accelerator_type(eval_gpu_identifier)
+    sdg_task.set_accelerator_limit(1)
+    add_toleration_json(sdg_task, train_tolerations)
+    add_node_selector_json(sdg_task, train_node_selectors)
 
     mount_pvc(
         task=sdg_task,
