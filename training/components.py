@@ -152,6 +152,7 @@ def pytorch_job_launcher_op(
 ):
     import logging
     import os
+    import json
 
     from kubeflow.training import TrainingClient, models
     from kubeflow.training.constants.constants import ISTIO_SIDECAR_INJECTION
@@ -306,9 +307,22 @@ def pytorch_job_launcher_op(
         models.V1EnvVar(name="NPROC_PER_NODE", value=f"{nproc_per_node}"),
         models.V1EnvVar(name="XDG_CACHE_HOME", value="/tmp"),
         models.V1EnvVar(name="TRITON_CACHE_DIR", value="/tmp"),
+        models.V1EnvVar(name="TRITON_HOME", value="/tmp"),
+        models.V1EnvVar(name="TRITON_DUMP_DIR", value="/tmp"),
+        models.V1EnvVar(name="TRITON_OVERRIDE_DIR", value="/tmp"),
         models.V1EnvVar(name="HF_HOME", value="/tmp"),
         models.V1EnvVar(name="TRANSFORMERS_CACHE", value="/tmp"),
     ]
+
+    # Set up secondary network interfaces
+    _namespace = "ilab-training-dsp"
+    network_annotation_value = [{"name": f"network-port-{i}", "namespace": _namespace} for i in range(15,21)]
+    network_annotation_str = json.dumps(network_annotation_value)
+    container_security_context = models.V1SecurityContext(
+        capabilities=models.V1Capabilities(
+            add=["IPC_LOCK", "SYS_RESOURCE", "NET_ADMIN", "NET_RAW"]
+        )
+    )
 
     # Get master and worker container specs
     master_container_spec = kfto_utils.get_container_spec(
@@ -320,9 +334,9 @@ def pytorch_job_launcher_op(
 
     # In the next release of kubeflow-training, the command
     # and the args will be a part of kfto_utils.get_container_spec function
+    master_container_spec.security_context = container_security_context
     master_container_spec.command = command
     master_container_spec.args = master_args
-
     master_container_spec.env = env_vars
 
     worker_container_spec = kfto_utils.get_container_spec(
@@ -331,25 +345,37 @@ def pytorch_job_launcher_op(
         resources=resources_per_worker,
         volume_mounts=volume_mounts_worker,
     )
+
+    worker_container_spec.security_context = container_security_context
     worker_container_spec.command = command
     worker_container_spec.args = worker_args
     worker_container_spec.env = env_vars
 
     # create master pod spec
     master_pod_template_spec = models.V1PodTemplateSpec(
-        metadata=models.V1ObjectMeta(annotations={ISTIO_SIDECAR_INJECTION: "false"}),
-        spec=models.V1PodSpec(
-            init_containers=None,
-            containers=[master_container_spec],
-            volumes=volumes,
-            tolerations=tolerations,
-            node_selector=node_selectors,
-        ),
+            metadata=models.V1ObjectMeta(
+                annotations={
+                    ISTIO_SIDECAR_INJECTION: "false",
+                    "k8s.v1.cni.cncf.io/networks": network_annotation_str,
+                }
+            ),
+            spec=models.V1PodSpec(
+                init_containers=None,
+                containers=[master_container_spec],
+                volumes=volumes,
+                tolerations=tolerations,
+                node_selector=node_selectors,
+            ),
     )
 
     # create worker pod spec
     worker_pod_template_spec = models.V1PodTemplateSpec(
-        metadata=models.V1ObjectMeta(annotations={ISTIO_SIDECAR_INJECTION: "false"}),
+        metadata=models.V1ObjectMeta(
+            annotations={
+                ISTIO_SIDECAR_INJECTION: "false",
+                "k8s.v1.cni.cncf.io/networks": network_annotation_str,
+            }
+        ),
         spec=models.V1PodSpec(
             init_containers=None,
             containers=[worker_container_spec],
