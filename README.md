@@ -21,11 +21,34 @@ This project makes running the InstructLab large language model (LLM) fine-tunin
       * NOTE: v3 is not compatible with RHOAI
 * [SDG taxonomy tree] to utilize for Synthetic Data Generation (SDG)
 * An OpenShift AI 2.19 or newer installation, with:
-  * Training Operator, ModelRegistry, KServe, and Data Science Pipelines components installed via the DataScienceCluster
+  * Training Operator, Model Registry, KServe, and Data Science Pipelines components installed via the DataScienceCluster
     * See docs on [Installing RHOAI components via DSC]
   * For [Model Registry] you will need:
     * Model Registry API URL
     * Model Registry Name
+    * The `pipeline-runner-dspa` `ServiceAccount` must be assigned the `registry-user-<model registry name>` role in
+      the `rhoai-model-registries` namespace. If not, the Model Registry prerequisites check in the pipeline will fail
+      with a `403` HTTP error.
+      * **Using the UI**: Follow the instructions at [Managing model registry permissions](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_self-managed/2.20/html/managing_model_registries/managing-model-registry-permissions_managing-model-registries).
+      * **Using the CLI**: For example, for a model registry named `my-model-registry` and the Data Science
+      Pipelines namespace of `my-pipelines-namespace`, the `RoleBinding` would look as follows:
+
+        ```yaml
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: dsp-permissions
+          namespace: rhoai-model-registries
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: Role
+          name: registry-user-my-model-registry
+        subjects:
+        - kind: ServiceAccount
+          name: pipeline-runner-dspa
+          namespace: my-pipelines-namespace
+        ```
+
   * A data science project/namespace, in this document this will be referred to as `<data-science-project-name/namespace>`
     * The Data Science Project should have a [Data Science Pipelines Server Configured]
   * A GPU [Accelerator profile enabled and created]
