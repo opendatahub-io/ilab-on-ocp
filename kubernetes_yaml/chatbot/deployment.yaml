@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot
+  labels:
+    app: chatbot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chatbot
+  template:
+    metadata:
+      labels:
+        app: chatbot
+    spec:
+      serviceAccountName: chatbot-sa
+      containers:
+      - name: chatbot-inference
+        image: quay.io/sallyom/chatbot:vllm
+        env:
+          - name: MODEL_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: chatbot-config
+                key: model_name
+          - name: MODEL_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: chatbot-config
+                key: model_endpoint
+          - name: MODEL_ENDPOINT_BEARER
+            valueFrom:
+              secretKeyRef:
+                name: model-token
+                key: api_key
+        ports:
+          - containerPort: 8501
+        securityContext:
+          runAsNonRoot: true
